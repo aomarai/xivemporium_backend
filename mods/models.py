@@ -30,7 +30,7 @@ class Race(models.Model):
 
 class Mod(models.Model):
     title = models.CharField(max_length=120)
-    short_desc = models.textField(max_length=200)
+    short_desc = models.TextField(max_length=200)
     description = models.TextField(max_length=1000)
     version = models.CharField(max_length=20, default="1.0.0")
     upload_date = models.DateTimeField(auto_now_add=True)
