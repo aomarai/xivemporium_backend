@@ -60,10 +60,19 @@ class Mod(models.Model):
     thumbnail = models.URLField(blank=True, null=True)
 
     def clean(self):
-        if not isinstance(self.file_size, int):
-            raise ValueError("File size must be an integer.")
         if not isinstance(self.version, str):
             raise ValueError("Version must be a string with a maximum of 20 characters.")
+        if len(self.version) > 20 or not self.version:
+            raise ValueError("Version must be a string with a maximum of 20 characters.")
+
+        if not isinstance(self.file_size, int):
+            raise ValueError("File size must be an integer.")
+
+        if len(self.short_desc) > 200 or not self.short_desc:
+            raise ValueError("Short description must be a string with a maximum of 200 characters.")
+        if len(self.description) > 1000 or not self.description:
+            raise ValueError("Description must be a string with a maximum of 1000 characters.")
+
         if self.file_size <= 0:
             raise ValueError("File size must be a positive integer.")
         if self.file_size > 1073741824:
