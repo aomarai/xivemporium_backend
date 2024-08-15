@@ -1,6 +1,11 @@
 from django.contrib import admin
 
-from .models import Category, Mod, ModImage, Race, Tag, User
+from .models import Category, Gender, Mod, ModCompatibility, ModImage, Race, Tag, User
+
+
+class ModCompatibilityInline(admin.TabularInline):
+    model = ModCompatibility
+    extra = 1
 
 
 @admin.register(Mod)
@@ -9,6 +14,7 @@ class ModAdmin(admin.ModelAdmin):
     list_filter = ("approved", "categories", "races")
     search_fields = ("title", "description", "user__username")
     actions = ["approve_mods", "reject_mods"]
+    inlines = [ModCompatibilityInline]
 
     @admin.action(description="Approve selected mods")
     def approve_mods(self, request, queryset):
@@ -52,5 +58,7 @@ class UserAdmin(admin.ModelAdmin):
 admin.site.register(Category)
 admin.site.register(Tag)
 admin.site.register(Race)
+admin.site.register(Gender)
 admin.site.register(ModImage)
+admin.site.register(ModCompatibility)
 admin.site.register(User)
