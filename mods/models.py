@@ -43,24 +43,27 @@ class ModCompatibility(models.Model):
 
 
 class Mod(models.Model):
-    title = models.CharField(max_length=120)
+    title = models.CharField(max_length=120, db_index=True)
     short_desc = models.TextField(max_length=200)
     description = models.TextField(max_length=1000)
     version = models.CharField(max_length=20, default="1.0.0")
     upload_date = models.DateTimeField(auto_now_add=True)
     updated_date = models.DateTimeField(auto_now=True, null=True)
     file = models.FileField(upload_to="mods/")
-    file_size = models.CharField(max_length=40)
+    file_size = models.BigIntegerField()
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     downloads = models.IntegerField(default=0)
-    categories = models.ManyToManyField(Category, related_name="mods")
-    tags = models.ManyToManyField(Tag, related_name="mods", blank=True)
-    approved = models.BooleanField(default=False)
+    categories = models.ManyToManyField(Category, related_name="mods", db_index=True)
+    tags = models.ManyToManyField(Tag, related_name="mods", blank=True, db_index=True)
+    approved = models.BooleanField(default=False, db_index=True)
     thumbnail = models.URLField(blank=True, null=True)
 
     def save(self, *args, **kwargs):
-        if self.categories.filter(requires_race=True).exists() and not self.races.exists():
-            raise ValueError("This mod requires one or more compatible races to be selected.")
+        if self.categories.filter(requires_race=True).exists():
+            if not ModCompatibility.objects.filter(mod=self, race__isnull=False).exists():
+                raise ValueError("This mod requires one or more compatible races to be selected.")
+            if not ModCompatibility.objects.filter(mod=self, gender__isnull=False).exists():
+                raise ValueError("This mod requires one or more compatible genders to be selected.")
         super().save(*args, **kwargs)
 
     def __str__(self):

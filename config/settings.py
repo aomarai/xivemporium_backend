@@ -37,7 +37,6 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "storages",  # AWS S3 Storage
-    # Custom
     "mods",
 ]
 
