@@ -10,14 +10,6 @@ class User(AbstractUser):
         return self.username
 
 
-class Category(models.Model):
-    name = models.CharField(max_length=120, unique=True, db_index=True)
-    requires_race = models.BooleanField(default=False, db_index=True)
-
-    def __str__(self):
-        return self.name
-
-
 class Tag(models.Model):
     name = models.CharField(max_length=40, unique=True, db_index=True)
 
@@ -28,6 +20,15 @@ class Race(models.Model):
 
 class Gender(models.Model):
     name = models.CharField(max_length=10, unique=True, db_index=True)
+
+    def __str__(self):
+        return self.name
+
+
+class Category(models.Model):
+    name = models.CharField(max_length=120, unique=True, db_index=True)
+    requires_race = models.BooleanField(default=False, db_index=True)
+    requires_gender = models.BooleanField(default=False, db_index=True)
 
     def __str__(self):
         return self.name
@@ -73,6 +74,7 @@ class Mod(models.Model):
         if self.categories.filter(requires_race=True).exists():
             if not ModCompatibility.objects.filter(mod=self, race__isnull=False).exists():
                 raise ValueError("One or more compatible races must be selected.")
+        if self.categories.filter(requires_gender=True).exists():
             if not ModCompatibility.objects.filter(mod=self, gender__isnull=False).exists():
                 raise ValueError("One or more compatible genders must be selected.")
         super().save(*args, **kwargs)
