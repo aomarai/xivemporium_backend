@@ -63,9 +63,9 @@ class Mod(models.Model):
             raise ValueError("File size must be an integer.")
         if not isinstance(self.version, str):
             raise ValueError("Version must be a string with a maximum of 20 characters.")
-        if self.file_size < 0:
+        if self.file_size <= 0:
             raise ValueError("File size must be a positive integer.")
-        if self.file_size > 1000000000:
+        if self.file_size > 1073741824:
             raise ValueError("File size must be less than 1GB.")
 
     def save(self, *args, **kwargs):
