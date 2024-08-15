@@ -1,17 +1,31 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.core.validators import (
+    MinLengthValidator,
+    MaxLengthValidator,
+    MinValueValidator,
+    MaxValueValidator,
+    FileExtensionValidator,
+    URLValidator,
+    EmailValidator,
+)
+from django.core.exceptions import ValidationError
 
 
 class User(AbstractUser):
-    username = models.CharField(max_length=40, unique=True, db_index=True)
-    email = models.EmailField(unique=True, db_index=True)
+    username = models.CharField(
+        max_length=40, unique=True, db_index=True, validators=[MinLengthValidator(2), MaxLengthValidator(40)]
+    )
+    email = models.EmailField(unique=True, db_index=True, validators=[EmailValidator()])
 
     def __str__(self):
         return self.username
 
 
 class Tag(models.Model):
-    name = models.CharField(max_length=40, unique=True, db_index=True)
+    name = models.CharField(
+        max_length=20, unique=True, db_index=True, validators=[MinLengthValidator(2), MaxLengthValidator(20)]
+    )
 
 
 class Race(models.Model):
@@ -26,7 +40,9 @@ class Gender(models.Model):
 
 
 class Category(models.Model):
-    name = models.CharField(max_length=120, unique=True, db_index=True)
+    name = models.CharField(
+        max_length=120, unique=True, db_index=True, validators=[MinLengthValidator(2), MaxLengthValidator(120)]
+    )
     requires_race = models.BooleanField(default=False, db_index=True)
     requires_gender = models.BooleanField(default=False, db_index=True)
 
@@ -44,39 +60,28 @@ class ModCompatibility(models.Model):
 
 
 class Mod(models.Model):
-    title = models.CharField(max_length=120, db_index=True)
-    short_desc = models.TextField(max_length=200)
-    description = models.TextField(max_length=1000)
-    version = models.CharField(max_length=20, default="1.0.0")
+    title = models.CharField(max_length=120, db_index=True, validators=[MinLengthValidator(5), MaxLengthValidator(120)])
+    short_desc = models.TextField(max_length=200, validators=[MinLengthValidator(0), MaxLengthValidator(200)])
+    description = models.TextField(max_length=1000, validators=[MinLengthValidator(0), MaxLengthValidator(1000)])
+    version = models.CharField(
+        max_length=20, default="1.0.0", validators=[MinValueValidator(1), MaxLengthValidator(20)]
+    )
     upload_date = models.DateTimeField(auto_now_add=True)
     updated_date = models.DateTimeField(auto_now=True, null=True)
     file = models.FileField(upload_to="mods/")
-    file_size = models.PositiveBigIntegerField()
+    file_size = models.PositiveBigIntegerField(validators=[MinValueValidator(1), MaxValueValidator(1073741824)])
     user = models.ForeignKey(User, on_delete=models.CASCADE, db_index=True)
-    downloads = models.PositiveIntegerField(default=0, db_index=True)
+    downloads = models.PositiveBigIntegerField(default=0, db_index=True, validators=[MinValueValidator(0)])
     categories = models.ManyToManyField(Category, related_name="mods", db_index=True)
     tags = models.ManyToManyField(Tag, related_name="mods", blank=True, db_index=True)
     approved = models.BooleanField(default=False, db_index=True)
-    thumbnail = models.URLField(blank=True, null=True)
+    thumbnail = models.URLField(blank=True, null=True, validators=[URLValidator()])
 
     def clean(self):
         if not isinstance(self.version, str):
             raise ValueError("Version must be a string with a maximum of 20 characters.")
-        if len(self.version) > 20 or not self.version:
-            raise ValueError("Version must be a string with a maximum of 20 characters.")
-
         if not isinstance(self.file_size, int):
             raise ValueError("File size must be an integer.")
-
-        if len(self.short_desc) > 200 or not self.short_desc:
-            raise ValueError("Short description must be a string with a maximum of 200 characters.")
-        if len(self.description) > 1000 or not self.description:
-            raise ValueError("Description must be a string with a maximum of 1000 characters.")
-
-        if self.file_size <= 0:
-            raise ValueError("File size must be a positive integer.")
-        if self.file_size > 1073741824:
-            raise ValueError("File size must be less than 1GB.")
 
     def save(self, *args, **kwargs):
         self.clean()
@@ -93,11 +98,21 @@ class Mod(models.Model):
 
 
 class ModImage(models.Model):
+    ALLOWED_EXTENSIONS = ["jpg", "jpeg", "png", "gif", "bmp", "tiff", "webp"]
+    MAXIMUM_FILE_SIZE = 5242880
+
     mod = models.ForeignKey(Mod, on_delete=models.CASCADE, db_index=True)
-    image = models.ImageField(upload_to="mod_images/")
+    image = models.ImageField(
+        upload_to="mod_images/",
+        db_index=True,
+        validators=[FileExtensionValidator(allowed_extensions=ALLOWED_EXTENSIONS)],
+    )
     is_thumbnail = models.BooleanField(default=False, db_index=True)
 
     def save(self, *args, **kwargs):
+        if self.image.size > self.MAXIMUM_FILE_SIZE:
+            raise ValidationError("Image file size must be less than 5MB.")
+
         if self.is_thumbnail:
             # Unset all other thumbnails
             ModImage.objects.filter(mod=self.mod, is_thumbnail=True).update(is_thumbnail=False)
