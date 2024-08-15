@@ -26,18 +26,34 @@ class Race(models.Model):
     name = models.CharField(max_length=120, unique=True)
 
 
+class Gender(models.Model):
+    name = models.CharField(max_length=10, unique=True)
+
+    def __str__(self):
+        return self.name
+
+
+class ModCompatibility(models.Model):
+    mod = models.ForeignKey("Mod", on_delete=models.CASCADE)
+    race = models.ForeignKey(Race, on_delete=models.CASCADE)
+    gender = models.ForeignKey(Gender, on_delete=models.CASCADE, blank=True, null=True)
+
+    def __str__(self):
+        return f"{self.mod.title} - {self.race.name} - {self.gender.name if self.gender else None}"
+
+
 class Mod(models.Model):
     title = models.CharField(max_length=120)
     short_desc = models.TextField(max_length=200)
     description = models.TextField(max_length=1000)
     version = models.CharField(max_length=20, default="1.0.0")
     upload_date = models.DateTimeField(auto_now_add=True)
+    updated_date = models.DateTimeField(auto_now=True, null=True)
     file = models.FileField(upload_to="mods/")
     file_size = models.CharField(max_length=40)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     downloads = models.IntegerField(default=0)
     categories = models.ManyToManyField(Category, related_name="mods")
-    races = models.ManyToManyField(Race, related_name="mods", blank=True)
     tags = models.ManyToManyField(Tag, related_name="mods", blank=True)
     approved = models.BooleanField(default=False)
 
