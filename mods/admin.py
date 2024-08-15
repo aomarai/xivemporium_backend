@@ -11,8 +11,8 @@ class ModCompatibilityInline(admin.TabularInline):
 @admin.register(Mod)
 class ModAdmin(admin.ModelAdmin):
     list_display = ("title", "user", "version", "upload_date", "approved")
-    list_filter = ("approved", "categories", "races")
-    search_fields = ("title", "description", "user__username")
+    list_filter = ("approved", "categories", "tags")
+    search_fields = ("title", "description", "user__username", "categories__name", "tags__name")
     actions = ["approve_mods", "reject_mods"]
     inlines = [ModCompatibilityInline]
 
