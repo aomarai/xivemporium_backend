@@ -56,6 +56,7 @@ class Mod(models.Model):
     categories = models.ManyToManyField(Category, related_name="mods")
     tags = models.ManyToManyField(Tag, related_name="mods", blank=True)
     approved = models.BooleanField(default=False)
+    thumbnail = models.URLField(blank=True, null=True)
 
     def save(self, *args, **kwargs):
         if self.categories.filter(requires_race=True).exists() and not self.races.exists():
@@ -69,7 +70,15 @@ class Mod(models.Model):
 class ModImage(models.Model):
     mod = models.ForeignKey(Mod, on_delete=models.CASCADE)
     image = models.ImageField(upload_to="mod_images/")
+    is_thumbnail = models.BooleanField(default=False)
 
+    def save(self, *args, **kwargs):
+        if self.is_thumbnail:
+            # Unset all other thumbnails
+            ModImage.objects.filter(mod=self.mod, is_thumbnail=True).update(is_thumbnail=False)
+            self.mod.thumbnail = self.image.url
+            self.mod.save()
+        super().save(*args, **kwargs)
 
-def __str__(self):
-    return self.title
+    def __str__(self):
+        return self.image.url
