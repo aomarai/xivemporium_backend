@@ -1,12 +1,10 @@
+from django.contrib.auth.models import AbstractUser
 from django.db import models
 
 
-class User(models.Model):
-    username = models.CharField(max_length=120)
-    email = models.EmailField()
-    date_joined = models.DateTimeField(auto_now_add=True)
-    password_hash = models.CharField(max_length=120)
-    password_salt = models.CharField(max_length=120)
+class User(AbstractUser):
+    username = models.CharField(max_length=40, unique=True)
+    email = models.EmailField(unique=True)
 
     def __str__(self):
         return self.username
@@ -41,6 +39,7 @@ class Mod(models.Model):
     categories = models.ManyToManyField(Category, related_name="mods")
     races = models.ManyToManyField(Race, related_name="mods", blank=True)
     tags = models.ManyToManyField(Tag, related_name="mods", blank=True)
+    approved = models.BooleanField(default=False)
 
     def save(self, *args, **kwargs):
         if self.categories.filter(requires_race=True).exists() and not self.races.exists():
