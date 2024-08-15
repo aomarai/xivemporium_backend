@@ -21,6 +21,6 @@ repos:
     rev: 7.1.1
     hooks:
       - id: flake8
-        args: ['--max-line-length=120']
+        args: ['--max-line-length=120', '--config=.flake8']
 
-exclude: 'requirements.txt'
+exclude: '^(mods/migrations/|.*\.(?!py$).*$)'
