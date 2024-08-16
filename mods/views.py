@@ -26,8 +26,11 @@ class ModSearchByTagAPIView(generics.ListAPIView):
     serializer_class = ModSerializer
 
     def get_queryset(self):
-        tag_id = self.kwargs["tag_id"]
-        return Mod.objects.filter(tags__id=tag_id, approved=True)
+        tag_ids = self.request.query_params.getlist("tag_ids")
+        queryset = Mod.objects.filter(approved=True)
+        for tag_id in tag_ids:
+            queryset = queryset.filter(tags__id=tag_id)
+        return queryset
 
 
 class ModSearchByTitleAPIView(generics.ListAPIView):
@@ -50,13 +53,19 @@ class ModSearchByRaceAPIView(generics.ListAPIView):
     serializer_class = ModSerializer
 
     def get_queryset(self):
-        race_id = self.kwargs["race_id"]
-        return Mod.objects.filter(modcompatibility__race__id=race_id, approved=True)
+        race_ids = self.request.query_params.getlist("race_ids")
+        queryset = Mod.objects.filter(approved=True)
+        for race_id in race_ids:
+            queryset = queryset.filter(modcompatibility__race__id=race_id)
+        return queryset
 
 
 class ModSearchByGenderAPIView(generics.ListAPIView):
     serializer_class = ModSerializer
 
     def get_queryset(self):
-        gender_id = self.kwargs["gender_id"]
-        return Mod.objects.filter(modcompatibility__gender__id=gender_id, approved=True)
+        gender_ids = self.request.query_params.getlist("gender_ids")
+        queryset = Mod.objects.filter(approved=True)
+        if gender_ids:
+            queryset = queryset.filter(modcompatibility__gender__id__in=gender_ids)
+        return queryset
