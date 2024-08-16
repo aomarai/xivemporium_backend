@@ -27,9 +27,18 @@ class Tag(models.Model):
         max_length=20, unique=True, db_index=True, validators=[MinLengthValidator(2), MaxLengthValidator(20)]
     )
 
+    def clean(self):
+        self.full_clean()
+
+    def __str__(self):
+        return self.name
+
 
 class Race(models.Model):
     name = models.CharField(max_length=120, unique=True, db_index=True)
+
+    def __str__(self):
+        return self.name
 
 
 class Gender(models.Model):
@@ -45,6 +54,9 @@ class Category(models.Model):
     )
     requires_race = models.BooleanField(default=False, db_index=True)
     requires_gender = models.BooleanField(default=False, db_index=True)
+
+    def clean(self):
+        self.full_clean()
 
     def __str__(self):
         return self.name
@@ -64,7 +76,7 @@ class Mod(models.Model):
     short_desc = models.TextField(max_length=200, validators=[MinLengthValidator(0), MaxLengthValidator(200)])
     description = models.TextField(max_length=1000, validators=[MinLengthValidator(0), MaxLengthValidator(1000)])
     version = models.CharField(
-        max_length=20, default="1.0.0", validators=[MinValueValidator(1), MaxLengthValidator(20)]
+        max_length=25, default="1.0.0", validators=[MinLengthValidator(1), MaxLengthValidator(25)]
     )
     upload_date = models.DateTimeField(auto_now_add=True)
     updated_date = models.DateTimeField(auto_now=True, null=True)
@@ -77,20 +89,16 @@ class Mod(models.Model):
     approved = models.BooleanField(default=False, db_index=True)
     thumbnail = models.URLField(blank=True, null=True, validators=[URLValidator()])
 
-    def clean(self):
-        if not isinstance(self.version, str):
-            raise ValueError("Version must be a string with a maximum of 20 characters.")
-        if not isinstance(self.file_size, int):
-            raise ValueError("File size must be an integer.")
-
     def save(self, *args, **kwargs):
-        self.clean()
+        self.full_clean()
+        if not self.categories.exists():
+            raise ValidationError("One or more categories must be selected.")
         if self.categories.filter(requires_race=True).exists():
             if not ModCompatibility.objects.filter(mod=self, race__isnull=False).exists():
-                raise ValueError("One or more compatible races must be selected.")
+                raise ValidationError("One or more compatible races must be selected.")
         if self.categories.filter(requires_gender=True).exists():
             if not ModCompatibility.objects.filter(mod=self, gender__isnull=False).exists():
-                raise ValueError("One or more compatible genders must be selected.")
+                raise ValidationError("One or more compatible genders must be selected.")
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -110,6 +118,7 @@ class ModImage(models.Model):
     is_thumbnail = models.BooleanField(default=False, db_index=True)
 
     def save(self, *args, **kwargs):
+        self.full_clean()
         if self.image.size > self.MAXIMUM_FILE_SIZE:
             raise ValidationError("Image file size must be less than 5MB.")
 
@@ -118,6 +127,13 @@ class ModImage(models.Model):
             ModImage.objects.filter(mod=self.mod, is_thumbnail=True).update(is_thumbnail=False)
             self.mod.thumbnail = self.image.url
             self.mod.save()
+        else:
+            # Check if this is the only image for the mod
+            if not ModImage.objects.filter(mod=self.mod).exclude(id=self.id).exists():
+                self.is_thumbnail = True
+                self.mod.thumbnail = self.image.url
+                self.mod.save()
+
         super().save(*args, **kwargs)
 
     def __str__(self):
