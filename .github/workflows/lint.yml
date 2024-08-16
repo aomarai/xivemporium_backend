@@ -1,9 +1,9 @@
-name: Linting and Testing
+name: Linting
 
 on: [push, pull_request]
 
 jobs:
-  lint_and_test:
+  lint:
     runs-on: ubuntu-latest
 
     steps:
