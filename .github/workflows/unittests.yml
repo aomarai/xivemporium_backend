@@ -10,9 +10,9 @@ jobs:
       postgres:
         image: postgres:latest
         env:
-          POSTGRES_DB: test_db
-          POSTGRES_USER: user
-          POSTGRES_PASSWORD: password
+          POSTGRES_DB: django_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
         ports:
           - 5432:5432
         options: >-
@@ -21,12 +21,15 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/django_test
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v2
         with:
           python-version: '3.10'
 
@@ -38,10 +41,10 @@ jobs:
 
       - name: Set up database
         run: |
-          . venv/bin/activate
+          python manage.py makemigrations
           python manage.py migrate
 
-      - name: Run Django tests
+      - name: Run Unit Tests
         run: |
           . venv/bin/activate
           python manage.py test
