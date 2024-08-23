@@ -1,3 +1,4 @@
+from uuid import uuid4
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.core.validators import (
@@ -10,6 +11,17 @@ from django.core.validators import (
     EmailValidator,
 )
 from django.core.exceptions import ValidationError
+
+
+USER_UPLOADED_MODS_PATH = "user_uploads"
+
+
+def get_image_upload_path(instance, filename):
+    return f"{USER_UPLOADED_MODS_PATH}/{instance.mod.uuid}/images/{filename}"
+
+
+def get_mod_upload_path(instance, filename):
+    return f"{USER_UPLOADED_MODS_PATH}/{instance.uuid}/files/{filename}"
 
 
 class User(AbstractUser):
@@ -50,7 +62,11 @@ class Gender(models.Model):
 
 class Category(models.Model):
     name = models.CharField(
-        max_length=120, unique=True, db_index=True, validators=[MinLengthValidator(2), MaxLengthValidator(120)]
+        max_length=120,
+        unique=True,
+        db_index=True,
+        editable=False,
+        validators=[MinLengthValidator(2), MaxLengthValidator(120)],
     )
     requires_race = models.BooleanField(default=False, db_index=True)
     requires_gender = models.BooleanField(default=False, db_index=True)
@@ -72,22 +88,25 @@ class ModCompatibility(models.Model):
 
 
 class Mod(models.Model):
+    uuid = models.UUIDField(default=uuid4, editable=False, unique=True, db_index=True)
     title = models.CharField(max_length=120, db_index=True, validators=[MinLengthValidator(5), MaxLengthValidator(120)])
-    short_desc = models.TextField(max_length=200, validators=[MinLengthValidator(0), MaxLengthValidator(200)])
+    short_desc = models.TextField(
+        max_length=200, validators=[MinLengthValidator(0), MaxLengthValidator(200)], db_index=True
+    )
     description = models.TextField(max_length=1000, validators=[MinLengthValidator(0), MaxLengthValidator(1000)])
     version = models.CharField(
         max_length=25, default="1.0.0", validators=[MinLengthValidator(1), MaxLengthValidator(25)]
     )
     upload_date = models.DateTimeField(auto_now_add=True)
     updated_date = models.DateTimeField(auto_now=True, null=True)
-    file = models.FileField(upload_to="mods/")
+    file = models.FileField(upload_to=get_mod_upload_path, db_index=True)
     file_size = models.PositiveBigIntegerField(validators=[MinValueValidator(1), MaxValueValidator(1073741824)])
     user = models.ForeignKey(User, on_delete=models.CASCADE, db_index=True)
     downloads = models.PositiveBigIntegerField(default=0, db_index=True, validators=[MinValueValidator(0)])
     categories = models.ManyToManyField(Category, related_name="mods", db_index=True)
     tags = models.ManyToManyField(Tag, related_name="mods", blank=True, db_index=True)
     approved = models.BooleanField(default=False, db_index=True)
-    thumbnail = models.URLField(blank=True, null=True, validators=[URLValidator()])
+    thumbnail = models.URLField(blank=True, null=True, validators=[URLValidator()], db_index=True)
 
     def save(self, *args, **kwargs):
         self.full_clean()
@@ -111,7 +130,7 @@ class ModImage(models.Model):
 
     mod = models.ForeignKey(Mod, on_delete=models.CASCADE, db_index=True)
     image = models.ImageField(
-        upload_to="mod_images/",
+        upload_to=get_image_upload_path,
         db_index=True,
         validators=[FileExtensionValidator(allowed_extensions=ALLOWED_EXTENSIONS)],
     )

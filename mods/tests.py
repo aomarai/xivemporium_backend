@@ -1,10 +1,13 @@
+import os
 import uuid
 import time
+import shutil
 from urllib.parse import urlparse
 from os.path import basename
+from .models import USER_UPLOADED_MODS_PATH
 
 from django.contrib.auth import get_user_model
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from django.test import TestCase
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -20,6 +23,29 @@ class ModModelTests(TestCase):
         # Common setup for each test, if needed
         self.user = User.objects.create(username="testuser", email=f"{uuid.uuid4()}@example.com")
         self.category = Category.objects.create(name="Initial Category")
+
+    def tearDown(self):
+        # Ensure cleanup runs after the transaction is complete
+        def cleanup():
+            # Clean up any images created during the tests
+            for mod_image in ModImage.objects.all():
+                if mod_image.image and os.path.isfile(mod_image.image.path):
+                    os.remove(mod_image.image.path)
+                mod_image.delete()
+
+            # Clean up all mods
+            Mod.objects.all().delete()
+
+            # Clean up all categories
+            Category.objects.all().delete()
+
+            # Clean up all users
+            User.objects.all().delete()
+
+        transaction.on_commit(cleanup)
+
+        # Delete the uploaded user mods directory if it exists
+        shutil.rmtree(USER_UPLOADED_MODS_PATH, ignore_errors=True)
 
     def test_unique_email_constraint(self):
         user1 = User.objects.create(username="user1", email=f"{uuid.uuid4()}@example.com")
