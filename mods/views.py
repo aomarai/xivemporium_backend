@@ -7,11 +7,13 @@ from .serializers import ModSerializer
 class ModListAPIView(generics.ListAPIView):
     queryset = Mod.objects.filter(approved=True)
     serializer_class = ModSerializer
+    lookup_field = "uuid"
 
 
 class ModDetailAPIView(generics.RetrieveAPIView):
     queryset = Mod.objects.filter(approved=True)
     serializer_class = ModSerializer
+    lookup_field = "uuid"
 
 
 class ModSearchByCategoryAPIView(generics.ListAPIView):

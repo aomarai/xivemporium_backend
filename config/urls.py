@@ -17,7 +17,29 @@ Including another URLconf
 
 from django.contrib import admin
 from django.urls import path
+from mods.views import (
+    ModListAPIView,
+    ModDetailAPIView,
+    ModSearchByCategoryAPIView,
+    ModSearchByTagAPIView,
+    ModSearchByTitleAPIView,
+    ModSearchByUserAPIView,
+    ModSearchByRaceAPIView,
+    ModSearchByGenderAPIView,
+)
+
+BASE_MODS_URL = "mod"
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+    path(BASE_MODS_URL, ModListAPIView.as_view(), name="list"),
+    path(f"{BASE_MODS_URL}/<uuid:uuid>/", ModDetailAPIView.as_view(), name="detail"),
+    path(
+        f"{BASE_MODS_URL}/category/<int:category_id>/", ModSearchByCategoryAPIView.as_view(), name="search-by-category"
+    ),
+    path(f"{BASE_MODS_URL}/tag/", ModSearchByTagAPIView.as_view(), name="search-by-tag"),
+    path(f"{BASE_MODS_URL}/title/<str:title>/", ModSearchByTitleAPIView.as_view(), name="search-by-title"),
+    path(f"{BASE_MODS_URL}/user/<int:user_id>/", ModSearchByUserAPIView.as_view(), name="search-by-user"),
+    path(f"{BASE_MODS_URL}/race", ModSearchByRaceAPIView.as_view(), name="search-by-race"),
+    path(f"{BASE_MODS_URL}/gender", ModSearchByGenderAPIView.as_view(), name="search-by-gender"),
 ]

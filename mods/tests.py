@@ -1,4 +1,5 @@
 import os
+import random
 import uuid
 import time
 import shutil
@@ -11,8 +12,11 @@ from django.db import IntegrityError, transaction
 from django.test import TestCase
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.urls import reverse
+from rest_framework import status
+from rest_framework.test import APITestCase
 
-from .models import Category, Gender, Mod, ModCompatibility, ModImage, Race
+from .models import Category, Gender, Mod, ModCompatibility, ModImage, Race, Tag
 
 User = get_user_model()
 
@@ -658,3 +662,88 @@ class ModModelTests(TestCase):
         self.assertIsNotNone(mod.updated_date)
         self.assertEqual(mod.upload_date, initial_upload_date)
         self.assertGreater(mod.updated_date, initial_updated_date)
+
+
+class ModAPITests(APITestCase):
+
+    def setUp(self):
+        self.user = User.objects.create(username="testuser", email=f"{uuid.uuid4()}@example.com")
+        self.category = Category.objects.create(name="Test Category")
+        self.tag = Tag.objects.create(name="Test Tag")
+        self.race = Race.objects.create(name="Test Race")
+        self.gender = Gender.objects.create(name="Test Gender")
+        self.mod = Mod(
+            id=random.randint(1, 1000),
+            title="Test Mod",
+            short_desc="Short description",
+            description="Long description",
+            version="1.0.0",
+            file="path/to/file",
+            file_size=1024,
+            user=self.user,
+            approved=True,
+        )
+        self.mod.categories.add(self.category)
+        self.mod.save()
+        self.mod.tags.add(self.tag)
+        ModCompatibility.objects.create(mod=self.mod, race=self.race, gender=self.gender)
+
+    def tearDown(self):
+        Mod.objects.all().delete()
+        Category.objects.all().delete()
+        Tag.objects.all().delete
+
+    def test_mod_list_api_view_returns_approved_mods(self):
+        url = reverse("list")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["title"], self.mod.title)
+
+    def test_mod_detail_api_view_returns_mod_details(self):
+        url = reverse("detail", kwargs={"uuid": self.mod.uuid})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["title"], self.mod.title)
+
+    def test_mod_search_by_category_api_view_returns_mods_in_category(self):
+        url = reverse("search-by-category", kwargs={"category_id": self.category.id})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["title"], self.mod.title)
+
+    def test_mod_search_by_tag_api_view_returns_mods_with_tags(self):
+        url = reverse("search-by-tag")
+        response = self.client.get(url, {"tag_ids": [self.tag.id]})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["title"], self.mod.title)
+
+    def test_mod_search_by_title_api_view_returns_mods_with_title(self):
+        url = reverse("search-by-title", kwargs={"title": "Test"})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["title"], self.mod.title)
+
+    def test_mod_search_by_user_api_view_returns_mods_by_user(self):
+        url = reverse("search-by-user", kwargs={"user_id": self.user.id})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["title"], self.mod.title)
+
+    def test_mod_search_by_race_api_view_returns_mods_with_race(self):
+        url = reverse("search-by-race")
+        response = self.client.get(url, {"race_ids": [self.race.id]})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["title"], self.mod.title)
+
+    def test_mod_search_by_gender_api_view_returns_mods_with_gender(self):
+        url = reverse("search-by-gender")
+        response = self.client.get(url, {"gender_ids": [self.gender.id]})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["title"], self.mod.title)
