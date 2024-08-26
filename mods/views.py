@@ -1,7 +1,7 @@
 from rest_framework import generics
 
-from .models import Mod
-from .serializers import ModSerializer
+from .models import Mod, Race, Gender, Tag
+from .serializers import ModSerializer, RaceSerializer, GenderSerializer, TagSerializer
 
 
 class ModListAPIView(generics.ListAPIView):
@@ -14,6 +14,28 @@ class ModDetailAPIView(generics.RetrieveAPIView):
     queryset = Mod.objects.filter(approved=True)
     serializer_class = ModSerializer
     lookup_field = "uuid"
+
+
+class ModCreateAPIView(generics.CreateAPIView):
+    queryset = Mod.objects.all()
+    serializer_class = ModSerializer
+
+
+class ModUpdateAPIView(generics.UpdateAPIView):
+    queryset = Mod.objects.all()
+    serializer_class = ModSerializer
+    lookup_field = "uuid"
+
+
+class ModDeleteAPIView(generics.DestroyAPIView):
+    queryset = Mod.objects.all()
+    serializer_class = ModSerializer
+    lookup_field = "uuid"
+
+
+class TagListAPIView(generics.ListAPIView):
+    queryset = Tag.objects.all()
+    serializer_class = TagSerializer
 
 
 class ModSearchByCategoryAPIView(generics.ListAPIView):
@@ -73,6 +95,11 @@ class ModSearchByGenderAPIView(generics.ListAPIView):
         return queryset
 
 
-class ModCreateAPIView(generics.CreateAPIView):
-    queryset = Mod.objects.all()
-    serializer_class = ModSerializer
+class RaceListAPIView(generics.ListAPIView):
+    queryset = Race.objects.all()
+    serializer_class = RaceSerializer
+
+
+class GenderListAPIView(generics.ListAPIView):
+    queryset = Gender.objects.all()
+    serializer_class = GenderSerializer
