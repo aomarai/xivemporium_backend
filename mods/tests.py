@@ -6,7 +6,7 @@ import time
 import shutil
 from urllib.parse import urlparse
 from os.path import basename
-from .models import USER_UPLOADED_MODS_PATH
+from .models import USER_UPLOADED_MODS_PATH, Comment
 
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError, transaction
@@ -792,3 +792,84 @@ class ModAPITests(APITestCase):
         url = reverse("detail", kwargs={"uuid": uuid.uuid4()})
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+
+class CommentModelTests(TestCase):
+
+    def setUp(self):
+        self.user = User.objects.create(username="testuser", email=f"{uuid.uuid4()}@example.com")
+        self.category = Category.objects.create(name="Test Category")
+        self.mod = Mod.objects.create(
+            title="Test Mod",
+            short_desc="Short description",
+            description="Long description",
+            version="1.0.0",
+            file_size=1000000,
+            user=self.user,
+            approved=True,
+            file="path/to/file.zip",
+            category=self.category,
+        )
+
+    def test_comment_saves_with_valid_data(self):
+        comment = Comment(
+            user=self.user,
+            mod=self.mod,
+            text="This is a comment",
+        )
+        comment.save()
+        self.assertEqual(Comment.objects.count(), 1)
+        self.assertEqual(Comment.objects.get(id=comment.id).text, "This is a comment")
+
+    def test_comment_requires_user(self):
+        with self.assertRaises(IntegrityError):
+            Comment.objects.create(
+                mod=self.mod,
+                text="This is a comment",
+            )
+
+    def test_comment_requires_mod(self):
+        with self.assertRaises(IntegrityError):
+            Comment.objects.create(
+                user=self.user,
+                text="This is a comment",
+            )
+
+    def test_comment_requires_text(self):
+        with self.assertRaises(IntegrityError):
+            Comment.objects.create(
+                user=self.user,
+                mod=self.mod,
+            )
+
+    def test_comment_text_length(self):
+        valid_text = "a" * 1000
+        invalid_text = "a" * 1001
+
+        # Test with valid text length
+        comment = Comment(
+            user=self.user,
+            mod=self.mod,
+            text=valid_text,
+        )
+        comment.save()
+        self.assertEqual(comment.text, valid_text)
+
+        # Test with invalid text length
+        with self.assertRaises(ValidationError):
+            comment2 = Comment(
+                user=self.user,
+                mod=self.mod,
+                text=invalid_text,
+            )
+            comment2.full_clean()  # This will trigger the validation
+            comment2.save()
+
+    def test_comment_creation_date(self):
+        comment = Comment(
+            user=self.user,
+            mod=self.mod,
+            text="This is a comment",
+        )
+        comment.save()
+        self.assertIsNotNone(comment.comment_date)

@@ -164,3 +164,32 @@ class ModImage(models.Model):
 
     def __str__(self):
         return self.image.url
+
+
+class Comment(models.Model):
+    mod = models.ForeignKey(Mod, on_delete=models.CASCADE, db_index=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, db_index=True)
+    comment = models.TextField(max_length=500, validators=[MinLengthValidator(1), MaxLengthValidator(500)])
+    comment_date = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.username} - {self.comment_date}"
+
+
+class Download(models.Model):
+    mod = models.ForeignKey(Mod, on_delete=models.CASCADE, db_index=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, db_index=True)
+    download_date = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.username} - {self.download_date}"
+
+
+class Rating(models.Model):
+    mod = models.ForeignKey(Mod, on_delete=models.CASCADE, db_index=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, db_index=True)
+    rating = models.PositiveSmallIntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
+    rating_date = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.username} - {self.rating_date}"

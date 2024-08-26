@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.core.exceptions import ValidationError
 
-from .models import Mod, ModCompatibility, Tag, Race, Gender
+from .models import Mod, ModCompatibility, Tag, Race, Gender, Download, Rating, Comment
 
 
 class ModSerializer(serializers.ModelSerializer):
@@ -59,4 +59,22 @@ class RaceSerializer(serializers.ModelSerializer):
 class GenderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Gender
+        fields = "__all__"
+
+
+class CommentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Comment
+        fields = "__all__"
+
+
+class DownloadSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Download
+        fields = "__all__"
+
+
+class RatingSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Rating
         fields = "__all__"
