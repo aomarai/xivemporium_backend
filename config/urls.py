@@ -26,6 +26,7 @@ from mods.views import (
     ModSearchByUserAPIView,
     ModSearchByRaceAPIView,
     ModSearchByGenderAPIView,
+    ModCreateAPIView,
 )
 
 BASE_MODS_URL = "mod"
@@ -33,6 +34,7 @@ BASE_MODS_URL = "mod"
 urlpatterns = [
     path("admin/", admin.site.urls),
     path(BASE_MODS_URL, ModListAPIView.as_view(), name="list"),
+    path(f"{BASE_MODS_URL}/create/", ModCreateAPIView.as_view(), name="create"),
     path(f"{BASE_MODS_URL}/<uuid:uuid>/", ModDetailAPIView.as_view(), name="detail"),
     path(
         f"{BASE_MODS_URL}/category/<int:category_id>/", ModSearchByCategoryAPIView.as_view(), name="search-by-category"

@@ -103,21 +103,25 @@ class Mod(models.Model):
     file_size = models.PositiveBigIntegerField(validators=[MinValueValidator(1), MaxValueValidator(1073741824)])
     user = models.ForeignKey(User, on_delete=models.CASCADE, db_index=True)
     downloads = models.PositiveBigIntegerField(default=0, db_index=True, validators=[MinValueValidator(0)])
-    categories = models.ManyToManyField(Category, related_name="mods", db_index=True)
+    category = models.ForeignKey(Category, on_delete=models.CASCADE, db_index=True)
     tags = models.ManyToManyField(Tag, related_name="mods", blank=True, db_index=True)
     approved = models.BooleanField(default=False, db_index=True)
     thumbnail = models.URLField(blank=True, null=True, validators=[URLValidator()], db_index=True)
 
     def save(self, *args, **kwargs):
-        self.full_clean()
-        if not self.categories.exists():
-            raise ValidationError("One or more categories must be selected.")
-        if self.categories.filter(requires_race=True).exists():
-            if not ModCompatibility.objects.filter(mod=self, race__isnull=False).exists():
-                raise ValidationError("One or more compatible races must be selected.")
-        if self.categories.filter(requires_gender=True).exists():
-            if not ModCompatibility.objects.filter(mod=self, gender__isnull=False).exists():
-                raise ValidationError("One or more compatible genders must be selected.")
+        self.full_clean()  # Perform model field validations
+
+        # Perform custom validations
+        if not self.category:
+            raise ValidationError("A category must be selected.")
+        if self.category.requires_race and not ModCompatibility.objects.filter(mod=self, race__isnull=False).exists():
+            raise ValidationError("One or more compatible races must be selected.")
+        if (
+            self.category.requires_gender
+            and not ModCompatibility.objects.filter(mod=self, gender__isnull=False).exists()
+        ):
+            raise ValidationError("One or more compatible genders must be selected.")
+
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -126,7 +130,7 @@ class Mod(models.Model):
 
 class ModImage(models.Model):
     ALLOWED_EXTENSIONS = ["jpg", "jpeg", "png", "gif", "bmp", "tiff", "webp"]
-    MAXIMUM_FILE_SIZE = 5242880
+    MAXIMUM_FILE_SIZE = 5242880  # 5MB
 
     mod = models.ForeignKey(Mod, on_delete=models.CASCADE, db_index=True)
     image = models.ImageField(
@@ -136,22 +140,25 @@ class ModImage(models.Model):
     )
     is_thumbnail = models.BooleanField(default=False, db_index=True)
 
-    def save(self, *args, **kwargs):
-        self.full_clean()
+    def clean(self):
+        """Validate the ModImage before saving."""
         if self.image.size > self.MAXIMUM_FILE_SIZE:
             raise ValidationError("Image file size must be less than 5MB.")
 
+    def save(self, *args, **kwargs):
+        self.full_clean()  # Perform model field validations
+
+        # If this is the thumbnail, ensure it's the only one
         if self.is_thumbnail:
-            # Unset all other thumbnails
-            ModImage.objects.filter(mod=self.mod, is_thumbnail=True).update(is_thumbnail=False)
+            ModImage.objects.filter(mod=self.mod, is_thumbnail=True).exclude(id=self.id).update(is_thumbnail=False)
             self.mod.thumbnail = self.image.url
-            self.mod.save()
+            self.mod.save(update_fields=["thumbnail"])
         else:
-            # Check if this is the only image for the mod
+            # If this is the only image, make it the thumbnail
             if not ModImage.objects.filter(mod=self.mod).exclude(id=self.id).exists():
                 self.is_thumbnail = True
                 self.mod.thumbnail = self.image.url
-                self.mod.save()
+                self.mod.save(update_fields=["thumbnail"])
 
         super().save(*args, **kwargs)
 

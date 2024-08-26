@@ -1,3 +1,4 @@
+import io
 import os
 import random
 import uuid
@@ -68,8 +69,8 @@ class ModModelTests(TestCase):
             user=self.user,
             approved=True,
             file="path/to/file.zip",
+            category=category,
         )
-        mod.categories.add(category)  # Now add categories
         mod.save()  # Save mod to ensure it has an ID
         image = SimpleUploadedFile("image.jpg", b"file_content", content_type="image/jpeg")
         mod_image = ModImage.objects.create(mod=mod, image=image, is_thumbnail=True)
@@ -97,8 +98,8 @@ class ModModelTests(TestCase):
             user=self.user,
             approved=True,
             file="path/to/file.zip",
+            category=category,
         )
-        mod.categories.add(category)  # Now add categories
         mod.save()  # Save mod to ensure it has an ID
 
         # Simulate image uploads
@@ -133,8 +134,8 @@ class ModModelTests(TestCase):
             user=self.user,
             approved=True,
             file="path/to/file.zip",
+            category=category,
         )
-        mod.categories.add(category)  # Now add categories
         mod.save()  # Save mod to ensure it has an ID
         image = SimpleUploadedFile("image.jpg", b"file_content", content_type="image/jpeg")
         ModImage.objects.create(mod=mod, image=image, is_thumbnail=False)
@@ -153,8 +154,8 @@ class ModModelTests(TestCase):
             user=self.user,
             approved=True,
             file="path/to/file.zip",
+            category=category,
         )
-        mod.categories.add(category)  # Now add categories
         mod.save()  # Save mod to ensure it has an ID
         image1 = SimpleUploadedFile("image1.jpg", b"file_content", content_type="image/jpeg")
         image2 = SimpleUploadedFile("image2.jpg", b"file_content", content_type="image/jpeg")
@@ -190,8 +191,8 @@ class ModModelTests(TestCase):
             user=self.user,
             approved=True,
             file="path/to/file.zip",
+            category=category,
         )
-        mod.categories.add(category)  # Now add categories
         mod.save()  # Save mod to ensure it has an ID
         mod.modimage_set.all().delete()
         mod.refresh_from_db()
@@ -210,30 +211,10 @@ class ModModelTests(TestCase):
             user=self.user,
             approved=True,
             file="path/to/file.zip",
+            category=category,
         )
-        mod.categories.add(category)
         mod.save()  # Save mod to ensure it has an ID
-        mod.refresh_from_db()
-        self.assertEqual(mod.categories.first(), category)
-
-    def test_mod_saves_with_multiple_categories(self):
-        category1 = Category.objects.create(name="Test Category 1")
-        category2 = Category.objects.create(name="Test Category 2")
-        mod = Mod(
-            id=1,
-            title="Test Mod",
-            short_desc="Short description",
-            description="Long description",
-            version="1.0.0",
-            file_size=1000000,
-            user=self.user,
-            approved=True,
-            file="path/to/file.zip",
-        )
-        mod.categories.add(category1, category2)
-        mod.save()  # Save mod to ensure it has an ID
-        mod.refresh_from_db()
-        self.assertIn(category2, mod.categories.all())
+        self.assertEqual(mod.category, category)
 
     def test_mod_without_categories(self):
         with self.assertRaises(ValidationError):
@@ -262,6 +243,7 @@ class ModModelTests(TestCase):
                 user=User.objects.create(username="anotheruser", email=f"{uuid.uuid4()}@example.com"),
                 approved=True,
                 file="path/to/file.zip",
+                category=self.category,
             )
             mod.save()
 
@@ -305,8 +287,8 @@ class ModModelTests(TestCase):
             user=self.user,
             approved=True,
             file="path/to/file.zip",
+            category=self.category,
         )
-        mod.categories.add(self.category)
         mod.save()  # Save mod to ensure it has an ID
         self.assertEqual(mod.file_size, file_size)
 
@@ -322,8 +304,8 @@ class ModModelTests(TestCase):
             user=self.user,
             approved=True,
             file="path/to/file.zip",
+            category=self.category,
         )
-        mod.categories.set([self.category])
         mod.save()  # Save mod to ensure it has an ID
         self.assertEqual(mod.file_size, file_size)
 
@@ -339,8 +321,8 @@ class ModModelTests(TestCase):
             user=User.objects.create(username="anotheruser", email=f"{uuid.uuid4()}@example.com"),
             approved=True,
             file="path/to/file.zip",
+            category=self.category,
         )
-        mod1.categories.set([self.category])
         mod1.save()
 
         # Create another mod with the same title
@@ -354,8 +336,8 @@ class ModModelTests(TestCase):
             user=User.objects.create(username="yetanotheruser", email=f"{uuid.uuid4()}@example.com"),
             approved=True,
             file="path/to/file.zip",
+            category=self.category,
         )
-        mod2.categories.set([self.category])
         mod2.save()
 
         self.assertEqual(Mod.objects.filter(title="Test Mod").count(), 2)
@@ -372,6 +354,7 @@ class ModModelTests(TestCase):
                 user=self.user,
                 approved=True,
                 file="path/to/file.zip",
+                category=self.category,
             )
 
     def test_mod_with_duplicate_user(self):
@@ -385,8 +368,8 @@ class ModModelTests(TestCase):
             user=self.user,
             approved=True,
             file="path/to/file.zip",
+            category=self.category,
         )
-        mod1.categories.set([self.category])
         mod1.save()
 
         # Create another mod with the same user
@@ -400,8 +383,8 @@ class ModModelTests(TestCase):
             user=self.user,
             approved=True,
             file="path/to/file.zip",
+            category=self.category,
         )
-        mod2.categories.set([self.category])
         mod2.save()
 
         self.assertEqual(Mod.objects.filter(user=self.user).count(), 2)
@@ -419,6 +402,7 @@ class ModModelTests(TestCase):
                 user=self.user,
                 approved=True,
                 file="path/to/file.zip",
+                category=self.category,
             )
             mod.full_clean()
             mod.save()
@@ -436,6 +420,7 @@ class ModModelTests(TestCase):
                 user=self.user,
                 approved=True,
                 file="path/to/file.zip",
+                category=self.category,
             )
             mod.full_clean()
             mod.save()
@@ -455,12 +440,12 @@ class ModModelTests(TestCase):
             user=self.user,
             approved=True,
             file="path/to/file.zip",
+            category=self.category,
         )
-        mod.categories.add(self.category)
         mod.save()  # Save mod with the valid category
 
         # Now replace the valid category with the one that requires a race
-        mod.categories.set([category_requires_race])
+        mod.category = category_requires_race
 
         # Ensure no ModCompatibility entries exist for this mod (simulate missing races)
         ModCompatibility.objects.filter(mod=mod).delete()
@@ -484,8 +469,8 @@ class ModModelTests(TestCase):
             user=self.user,
             approved=True,
             file="path/to/file.zip",
+            category=self.category,
         )
-        mod.categories.add(self.category)
         mod.save()  # Save mod to ensure it has an ID
         ModCompatibility.objects.create(mod=mod, race=race)
         mod.save()
@@ -503,10 +488,10 @@ class ModModelTests(TestCase):
             user=self.user,
             approved=True,
             file="path/to/file.zip",
+            category=self.category,
         )
-        mod.categories.add(self.category)
         mod.save()  # Save mod to ensure it has an ID
-        mod.categories.set([category])
+        mod.category = category
         ModCompatibility.objects.filter(mod=mod).delete()
 
         with self.assertRaises(ValidationError):
@@ -526,10 +511,10 @@ class ModModelTests(TestCase):
             user=self.user,
             approved=True,
             file="path/to/file.zip",
+            category=self.category,
         )
-        mod.categories.add(self.category)
         mod.save()  # Save mod to ensure it has an ID
-        mod.categories.set([category])
+        mod.category = category
         ModCompatibility.objects.create(mod=mod, gender=gender, race=race)
         mod.save()
         self.assertTrue(ModCompatibility.objects.filter(mod=mod, gender=gender).exists())
@@ -550,8 +535,8 @@ class ModModelTests(TestCase):
             user=self.user,
             approved=True,
             file="path/to/file.zip",
+            category=category,
         )
-        mod.categories.add(category)
         mod.save()
         self.assertEqual(mod.description, valid_description)
 
@@ -567,9 +552,9 @@ class ModModelTests(TestCase):
                 user=self.user,
                 approved=True,
                 file="path/to/file.zip",
+                category=category,
             )
             mod2.full_clean()  # This will trigger the validation
-            mod2.categories.add(category)
             mod2.save()
 
     def test_mod_short_desc_length(self):
@@ -588,8 +573,8 @@ class ModModelTests(TestCase):
             user=self.user,
             approved=True,
             file="path/to/file.zip",
+            category=category,
         )
-        mod.categories.add(category)
         mod.save()
         self.assertEqual(mod.short_desc, valid_short_desc)
 
@@ -605,6 +590,7 @@ class ModModelTests(TestCase):
                 user=self.user,
                 approved=True,
                 file="path/to/file.zip",
+                category=category,
             )
             mod2.full_clean()  # This will trigger the validation
             mod2.save()
@@ -621,8 +607,8 @@ class ModModelTests(TestCase):
             user=self.user,
             approved=True,
             file="path/to/file.zip",
+            category=self.category,
         )
-        mod.categories.add(self.category)
         mod.save()
 
         self.assertIsNotNone(mod.upload_date)
@@ -641,8 +627,8 @@ class ModModelTests(TestCase):
             user=self.user,
             approved=True,
             file="path/to/file.zip",
+            category=category,
         )
-        mod.categories.add(category)
         mod.save()
 
         # Store the initial upload and update dates
@@ -667,8 +653,13 @@ class ModModelTests(TestCase):
 class ModAPITests(APITestCase):
 
     def setUp(self):
+        category_two = Category.objects.create(name="Another Category")
+
+        file_content = io.BytesIO(b"file_content" * 1024)
+        self.file = SimpleUploadedFile("file.zip", file_content.read(), content_type="application/zip")
         self.user = User.objects.create(username="testuser", email=f"{uuid.uuid4()}@example.com")
         self.category = Category.objects.create(name="Test Category")
+        self.category_two = category_two  # Save the second category
         self.tag = Tag.objects.create(name="Test Tag")
         self.race = Race.objects.create(name="Test Race")
         self.gender = Gender.objects.create(name="Test Gender")
@@ -678,12 +669,12 @@ class ModAPITests(APITestCase):
             short_desc="Short description",
             description="Long description",
             version="1.0.0",
-            file="path/to/file",
-            file_size=1024,
+            file=self.file,
+            file_size=self.file.size,
             user=self.user,
             approved=True,
+            category=self.category,  # Assign category directly
         )
-        self.mod.categories.add(self.category)
         self.mod.save()
         self.mod.tags.add(self.tag)
         ModCompatibility.objects.create(mod=self.mod, race=self.race, gender=self.gender)
@@ -747,3 +738,57 @@ class ModAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]["title"], self.mod.title)
+
+    def test_mod_create_api_view_creates_mod(self):
+        url = reverse("create")
+
+        data = {
+            "title": "New Mod",
+            "short_desc": "New short description",
+            "description": "New long description",
+            "version": "1.0.0",
+            "file": self.file,
+            "file_size": self.file.size,
+            "user": self.user.id,
+            "approved": True,
+            "category": self.category_two.id,  # Use the ID of the second category
+            "tags": [self.tag.id],
+        }
+
+        # Reset the file pointer to ensure it's read correctly
+        self.file.seek(0)
+
+        response = self.client.post(url, data, format="multipart")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Mod.objects.count(), 2)
+        self.assertEqual(Mod.objects.get(id=response.data["id"]).title, "New Mod")
+
+    def test_mod_create_api_view_fails_with_invalid_data(self):
+        url = reverse("create")
+        data = {
+            "title": "",
+            "short_desc": "New short description",
+            "description": "New long description",
+            "version": "1.0.0",
+            "file": SimpleUploadedFile("file.zip", b"file_content", content_type="application/zip"),
+            "file_size": self.file.size,
+            "user": self.user.id,
+            "approved": True,
+            "categories": [self.category.id],
+            "tags": [self.tag.id],
+        }
+        response = self.client.post(url, data, format="multipart")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(Mod.objects.count(), 1)
+
+    def test_mod_list_api_view_returns_empty_list_when_no_mods(self):
+        Mod.objects.all().delete()
+        url = reverse("list")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 0)
+
+    def test_mod_detail_api_view_returns_404_for_nonexistent_mod(self):
+        url = reverse("detail", kwargs={"uuid": uuid.uuid4()})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
