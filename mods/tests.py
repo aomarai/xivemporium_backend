@@ -22,6 +22,12 @@ from .models import Category, Gender, Mod, ModCompatibility, ModImage, Race, Tag
 User = get_user_model()
 
 
+def _get_test_file_content():
+    """Returns an in-memory file to be used for testing purposes."""
+    file_content = io.BytesIO(b"file_content" * 1024)
+    return SimpleUploadedFile("file.zip", file_content.read(), content_type="application/zip")
+
+
 class ModModelTests(TestCase):
 
     def setUp(self):
@@ -799,15 +805,16 @@ class CommentModelTests(TestCase):
     def setUp(self):
         self.user = User.objects.create(username="testuser", email=f"{uuid.uuid4()}@example.com")
         self.category = Category.objects.create(name="Test Category")
+        self.file = _get_test_file_content()
         self.mod = Mod.objects.create(
             title="Test Mod",
             short_desc="Short description",
             description="Long description",
             version="1.0.0",
-            file_size=1000000,
+            file_size=self.file.size,
             user=self.user,
             approved=True,
-            file="path/to/file.zip",
+            file=self.file,
             category=self.category,
         )
 
@@ -836,11 +843,14 @@ class CommentModelTests(TestCase):
             )
 
     def test_comment_requires_text(self):
-        with self.assertRaises(IntegrityError):
+        with self.assertRaises(ValidationError):
             Comment.objects.create(
                 user=self.user,
                 mod=self.mod,
             )
+
+        with self.assertRaises(ValidationError):
+            Comment.objects.create(user=self.user, mod=self.mod, text="")
 
     def test_comment_text_length(self):
         valid_text = "a" * 1000

@@ -30,6 +30,8 @@ from mods.views import (
     GenderListAPIView,
     ModUpdateAPIView,
     ModDeleteAPIView,
+    ModSearchByRaceAPIView,
+    ModSearchByGenderAPIView,
 )
 
 BASE_MODS_URL = "mod"
@@ -47,6 +49,8 @@ urlpatterns = [
     path(f"{BASE_MODS_URL}/tag/", ModSearchByTagAPIView.as_view(), name="search-by-tag"),
     path(f"{BASE_MODS_URL}/title/<str:title>/", ModSearchByTitleAPIView.as_view(), name="search-by-title"),
     path(f"{BASE_MODS_URL}/user/<int:user_id>/", ModSearchByUserAPIView.as_view(), name="search-by-user"),
+    path(f"{BASE_MODS_URL}/race/", ModSearchByRaceAPIView.as_view(), name="search-by-race"),
+    path(f"{BASE_MODS_URL}/gender", ModSearchByGenderAPIView.as_view(), name="search-by-gender"),
     path("tags/", TagListAPIView.as_view(), name="tag-list"),
     path("races/", RaceListAPIView.as_view(), name="race-list"),
     path("genders/", GenderListAPIView.as_view(), name="gender-list"),

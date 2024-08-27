@@ -169,8 +169,16 @@ class ModImage(models.Model):
 class Comment(models.Model):
     mod = models.ForeignKey(Mod, on_delete=models.CASCADE, db_index=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE, db_index=True)
-    comment = models.TextField(max_length=500, validators=[MinLengthValidator(1), MaxLengthValidator(500)])
+    text = models.TextField(max_length=500, validators=[MinLengthValidator(1), MaxLengthValidator(500)])
     comment_date = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        if not self.text:
+            raise ValidationError("Comment text must not be empty.")
+        if not isinstance(self.text, str):
+            raise ValidationError("Comment must be a string.")
+
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.user.username} - {self.comment_date}"
