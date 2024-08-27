@@ -6,7 +6,7 @@ import time
 import shutil
 from urllib.parse import urlparse
 from os.path import basename
-from .models import USER_UPLOADED_MODS_PATH, Comment
+from .models import USER_UPLOADED_MODS_PATH, Comment, Download
 
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError, transaction
@@ -32,7 +32,7 @@ class ModModelTests(TestCase):
 
     def setUp(self):
         # Common setup for each test, if needed
-        self.user = User.objects.create(username="testuser", email=f"{uuid.uuid4()}@example.com")
+        self.user = User.objects.create(username="testuser", email=f"{uuid.uuid4()}@example.com", password=uuid.uuid4())
         self.category = Category.objects.create(name="Initial Category")
 
     def tearDown(self):
@@ -59,8 +59,8 @@ class ModModelTests(TestCase):
         shutil.rmtree(USER_UPLOADED_MODS_PATH, ignore_errors=True)
 
     def test_unique_email_constraint(self):
-        user1 = User.objects.create(username="user1", email=f"{uuid.uuid4()}@example.com")
-        with self.assertRaises(IntegrityError):
+        user1 = User.objects.create(username="user1", email=f"{uuid.uuid4()}@example.com", password=uuid.uuid4())
+        with self.assertRaises(ValidationError):
             User.objects.create(username="user2", email=user1.email)
 
     def test_mod_saves_with_thumbnail(self):
@@ -324,7 +324,9 @@ class ModModelTests(TestCase):
             description="Long description",
             version="1.0.0",
             file_size=1000000,
-            user=User.objects.create(username="anotheruser", email=f"{uuid.uuid4()}@example.com"),
+            user=User.objects.create(
+                username="anotheruser", email=f"{uuid.uuid4()}@example.com", password=uuid.uuid4()
+            ),
             approved=True,
             file="path/to/file.zip",
             category=self.category,
@@ -339,7 +341,9 @@ class ModModelTests(TestCase):
             description="Long description",
             version="1.0.0",
             file_size=1000000,
-            user=User.objects.create(username="yetanotheruser", email=f"{uuid.uuid4()}@example.com"),
+            user=User.objects.create(
+                username="yetanotheruser", email=f"{uuid.uuid4()}@example.com", password=uuid.uuid4()
+            ),
             approved=True,
             file="path/to/file.zip",
             category=self.category,
@@ -663,7 +667,7 @@ class ModAPITests(APITestCase):
 
         file_content = io.BytesIO(b"file_content" * 1024)
         self.file = SimpleUploadedFile("file.zip", file_content.read(), content_type="application/zip")
-        self.user = User.objects.create(username="testuser", email=f"{uuid.uuid4()}@example.com")
+        self.user = User.objects.create(username="testuser", email=f"{uuid.uuid4()}@example.com", password=uuid.uuid4())
         self.category = Category.objects.create(name="Test Category")
         self.category_two = category_two  # Save the second category
         self.tag = Tag.objects.create(name="Test Tag")
@@ -803,7 +807,7 @@ class ModAPITests(APITestCase):
 class CommentModelTests(TestCase):
 
     def setUp(self):
-        self.user = User.objects.create(username="testuser", email=f"{uuid.uuid4()}@example.com")
+        self.user = User.objects.create(username="testuser", email=f"{uuid.uuid4()}@example.com", password=uuid.uuid4())
         self.category = Category.objects.create(name="Test Category")
         self.file = _get_test_file_content()
         self.mod = Mod.objects.create(
@@ -883,3 +887,57 @@ class CommentModelTests(TestCase):
         )
         comment.save()
         self.assertIsNotNone(comment.comment_date)
+
+
+class DownloadModelTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create(username="testuser", email=f"{uuid.uuid4()}@example.com", password=uuid.uuid4())
+        self.category = Category.objects.create(name="Test Category")
+        self.file = _get_test_file_content()
+        self.mod = Mod.objects.create(
+            title="Test Mod",
+            short_desc="Short description",
+            description="Long description",
+            version="1.0.0",
+            file_size=self.file.size,
+            user=self.user,
+            approved=True,
+            file=self.file,
+            category=self.category,
+        )
+
+    def test_download_saves_with_valid_data(self):
+        Download.objects.create(mod=self.mod, user=self.user)
+        self.assertEqual(Download.objects.count(), 1)
+
+    def test_download_fails_with_invalid_data(self):
+        with self.assertRaises(ValidationError):
+            Download.objects.create(mod=self.mod, user=self.user, download_date="10/11/2012")
+
+    def test_download_count_increments_on_mod(self):
+        download = Download.objects.create(
+            mod=self.mod,
+            user=self.user,
+        )
+        num_downloads = download.mod.downloads
+
+        download2 = Download.objects.create(mod=self.mod, user=self.user)
+        self.assertNotEquals(num_downloads, download2.mod.downloads)
+
+
+class RatingModelTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create(username="testuser", email=f"{uuid.uuid4()}@example.com", password=uuid.uuid4())
+        self.category = Category.objects.create(name="Test Category")
+        self.file = _get_test_file_content()
+        self.mod = Mod.objects.create(
+            title="Test Mod",
+            short_desc="Short description",
+            description="Long description",
+            version="1.0.0",
+            file_size=self.file.size,
+            user=self.user,
+            approved=True,
+            file=self.file,
+            category=self.category,
+        )

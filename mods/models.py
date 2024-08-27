@@ -30,6 +30,10 @@ class User(AbstractUser):
     )
     email = models.EmailField(unique=True, db_index=True, validators=[EmailValidator()])
 
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return self.username
 
@@ -97,7 +101,7 @@ class Mod(models.Model):
     version = models.CharField(
         max_length=25, default="1.0.0", validators=[MinLengthValidator(1), MaxLengthValidator(25)]
     )
-    upload_date = models.DateTimeField(auto_now_add=True)
+    upload_date = models.DateTimeField(auto_now_add=True, editable=False)
     updated_date = models.DateTimeField(auto_now=True, null=True)
     file = models.FileField(upload_to=get_mod_upload_path, db_index=True)
     file_size = models.PositiveBigIntegerField(validators=[MinValueValidator(1), MaxValueValidator(1073741824)])
@@ -189,6 +193,11 @@ class Download(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, db_index=True)
     download_date = models.DateTimeField(auto_now_add=True)
 
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        self.mod.downloads += 1
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"{self.user.username} - {self.download_date}"
 
@@ -198,6 +207,10 @@ class Rating(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, db_index=True)
     rating = models.PositiveSmallIntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
     rating_date = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.user.username} - {self.rating_date}"
