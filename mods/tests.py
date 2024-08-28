@@ -803,6 +803,81 @@ class ModAPITests(APITestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
+    def test_mod_update_api_view_updates_existing_mod(self):
+        url = reverse("update", kwargs={"uuid": self.mod.uuid})
+        data = {
+            "title": "Updated Mod",
+            "short_desc": self.mod.short_desc,
+            "description": self.mod.description,
+            "version": self.mod.version,
+            "file": self.file,
+            "file_size": self.mod.file_size,
+            "user": self.user.id,
+            "approved": self.mod.approved,
+            "category": self.category.id,
+        }
+        # Reset the file pointer to ensure it's read correctly
+        self.file.seek(0)
+        response = self.client.put(url, data, format="multipart")
+        self.assertEqual(response.status_code, 200)
+        self.mod.refresh_from_db()
+        self.assertEqual(self.mod.title, "Updated Mod")
+
+    def test_mod_delete_api_view_deletes_mod(self):
+        url = reverse("delete", kwargs={"uuid": self.mod.uuid})
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(Mod.objects.count(), 0)
+
+    def test_mod_search_by_category_api_view_returns_mods_by_category(self):
+        url = reverse("search-by-category", kwargs={"category_id": self.category.id})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["title"], "Test Mod")
+
+    def test_mod_search_by_tag_api_view_returns_mods_by_tags(self):
+        url = reverse("search-by-tag")
+        response = self.client.get(url, {"tag_ids": [self.tag.id]})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["title"], "Test Mod")
+
+    def test_mod_search_by_title_api_view_returns_mods_by_title(self):
+        url = reverse("search-by-title", kwargs={"title": "Test"})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["title"], "Test Mod")
+
+    def test_mod_search_by_race_api_view_returns_mods_by_race(self):
+        url = reverse("search-by-race")
+        response = self.client.get(url, {"race_ids": [self.race.id]})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["title"], "Test Mod")
+
+    def test_mod_search_by_gender_api_view_returns_mods_by_gender(self):
+        url = reverse("search-by-gender")
+        response = self.client.get(url, {"gender_ids": [self.gender.id]})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["title"], "Test Mod")
+
+    def test_race_list_api_view_returns_all_races(self):
+        url = reverse("race-list")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["name"], "Test Race")
+
+    def test_gender_list_api_view_returns_all_genders(self):
+        url = reverse("gender-list")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["name"], "Test Gender")
+
 
 class CommentModelTests(TestCase):
 
