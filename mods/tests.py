@@ -6,7 +6,7 @@ import time
 import shutil
 from urllib.parse import urlparse
 from os.path import basename
-from .models import USER_UPLOADED_MODS_PATH, Comment, Download
+from .models import USER_UPLOADED_MODS_PATH, Comment, Download, Rating
 
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError, transaction
@@ -924,6 +924,14 @@ class DownloadModelTests(TestCase):
         download2 = Download.objects.create(mod=self.mod, user=self.user)
         self.assertNotEqual(num_downloads, download2.mod.downloads)
 
+    def test_download_requires_user(self):
+        with self.assertRaises(ValidationError):
+            Download.objects.create(mod=self.mod)
+
+    def test_download_requires_mod(self):
+        with self.assertRaises(ValidationError):
+            Download.objects.create(user=self.user)
+
 
 class RatingModelTests(TestCase):
     def setUp(self):
@@ -941,3 +949,29 @@ class RatingModelTests(TestCase):
             file=self.file,
             category=self.category,
         )
+
+    def test_rating_is_created_successfully(self):
+        rating = Rating.objects.create(mod=self.mod, user=self.user, rating=5)
+        self.assertEqual(rating.rating, 5)
+        self.assertEqual(rating.user, self.user)
+        self.assertEqual(rating.mod, self.mod)
+
+    def test_rating_exceeds_max_value(self):
+        with self.assertRaises(ValidationError):
+            Rating.objects.create(mod=self.mod, user=self.user, rating=6)
+
+    def test_rating_below_min_value(self):
+        with self.assertRaises(ValidationError):
+            Rating.objects.create(mod=self.mod, user=self.user, rating=0)
+
+    def test_rating_requires_user(self):
+        with self.assertRaises(ValidationError):
+            Rating.objects.create(mod=self.mod, rating=5)
+
+    def test_rating_requires_mod(self):
+        with self.assertRaises(ValidationError):
+            Rating.objects.create(user=self.user, rating=5)
+
+    def test_rating_requires_rating(self):
+        with self.assertRaises(ValidationError):
+            Rating.objects.create(mod=self.mod, user=self.user)

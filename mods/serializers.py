@@ -4,7 +4,29 @@ from django.core.exceptions import ValidationError
 from .models import Mod, ModCompatibility, Tag, Race, Gender, Download, Rating, Comment
 
 
+class CommentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Comment
+        fields = ["id", "user", "text", "comment_date"]
+
+
+class DownloadSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Download
+        fields = ["id", "user", "download_date"]
+
+
+class RatingSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Rating
+        fields = ["id", "user", "rating"]
+
+
 class ModSerializer(serializers.ModelSerializer):
+    comments = CommentSerializer(many=True, read_only=True)
+    downloads = DownloadSerializer(source="mod_downloads", many=True, read_only=True)
+    ratings = RatingSerializer(many=True, read_only=True)
+
     class Meta:
         model = Mod
         fields = "__all__"
@@ -59,22 +81,4 @@ class RaceSerializer(serializers.ModelSerializer):
 class GenderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Gender
-        fields = "__all__"
-
-
-class CommentSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Comment
-        fields = "__all__"
-
-
-class DownloadSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Download
-        fields = "__all__"
-
-
-class RatingSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Rating
         fields = "__all__"

@@ -172,9 +172,11 @@ class ModImage(models.Model):
 
 
 class Comment(models.Model):
-    mod = models.ForeignKey(Mod, on_delete=models.CASCADE, db_index=True)
+    mod = models.ForeignKey(Mod, related_name="comments", on_delete=models.CASCADE, db_index=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE, db_index=True)
-    text = models.TextField(max_length=500, validators=[MinLengthValidator(1), MaxLengthValidator(500)])
+    text = models.TextField(
+        max_length=500, validators=[MinLengthValidator(1), MaxLengthValidator(500)], blank=False, null=False
+    )
     comment_date = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):
@@ -190,7 +192,7 @@ class Comment(models.Model):
 
 
 class Download(models.Model):
-    mod = models.ForeignKey(Mod, on_delete=models.CASCADE, db_index=True)
+    mod = models.ForeignKey(Mod, related_name="mod_downloads", on_delete=models.CASCADE, db_index=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE, db_index=True)
     download_date = models.DateTimeField(auto_now_add=True)
 
@@ -204,9 +206,9 @@ class Download(models.Model):
 
 
 class Rating(models.Model):
-    mod = models.ForeignKey(Mod, on_delete=models.CASCADE, db_index=True)
+    mod = models.ForeignKey(Mod, related_name="ratings", on_delete=models.CASCADE, db_index=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE, db_index=True)
-    rating = models.PositiveSmallIntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
+    rating = models.IntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
     rating_date = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):
