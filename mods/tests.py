@@ -922,7 +922,7 @@ class DownloadModelTests(TestCase):
         num_downloads = download.mod.downloads
 
         download2 = Download.objects.create(mod=self.mod, user=self.user)
-        self.assertNotEquals(num_downloads, download2.mod.downloads)
+        self.assertNotEqual(num_downloads, download2.mod.downloads)
 
 
 class RatingModelTests(TestCase):
