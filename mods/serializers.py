@@ -56,11 +56,6 @@ class ModSerializer(serializers.ModelSerializer):
 
         return mod
 
-    def update(self, instance, validated_data):
-        for field in ["user", "category"]:
-            validated_data.pop(field, None)
-        return super().update(instance, validated_data)
-
 
 class ModCatalogCardSerializer(serializers.ModelSerializer):
     class Meta:

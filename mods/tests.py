@@ -820,17 +820,8 @@ class ModAPITests(APITestCase):
         url = reverse("update", kwargs={"uuid": self.mod.uuid})
         data = {
             "title": "Updated Mod",
-            "short_desc": self.mod.short_desc,
-            "description": self.mod.description,
-            "version": self.mod.version,
-            "file": self.file,
-            "file_size": self.mod.file_size,
-            "user": self.user.id,
-            "approved": self.mod.approved,
-            "category": self.category.id,
         }
         # Reset the file pointer to ensure it's read correctly
-        self.file.seek(0)
         response = self.client.put(url, data, format="multipart")
         self.assertEqual(response.status_code, 200)
         self.mod.refresh_from_db()
@@ -1134,9 +1125,7 @@ class ModIntegrationTests(APITestCase):
             "version": "1.0.1",
             "file": self.file,
             "file_size": self.file.size,
-            "category": self.category.id,
             "tags": [self.tag.id],
-            "user": self.user.id,
         }
         self.file.seek(0)  # Reset the file pointer
         response = self.client.put(update_url, updated_data, format="multipart")

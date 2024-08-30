@@ -32,6 +32,22 @@ class ModUpdateAPIView(generics.UpdateAPIView):
     lookup_field = "uuid"
     permission_classes = [IsAuthenticated]
 
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop("partial", True)  # Allow partial updates
+        instance = self.get_object()
+
+        # Populate any missing data in the request with the current instance's data
+        data = request.data.copy()
+        for field in self.serializer_class.Meta.fields:
+            if field not in data and hasattr(instance, field):
+                data[field] = getattr(instance, field)
+
+        serializer = self.get_serializer(instance, data=data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+
+        return Response(serializer.data)
+
 
 # TODO: Ensure only the user who created the mod can update or delete it
 class ModDeleteAPIView(generics.DestroyAPIView):
