@@ -1140,7 +1140,6 @@ class ModIntegrationTests(APITestCase):
         }
         self.file.seek(0)  # Reset the file pointer
         response = self.client.put(update_url, updated_data, format="multipart")
-        print(response.data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["title"], "Updated Mod")
 
