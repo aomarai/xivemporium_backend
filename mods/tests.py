@@ -6,6 +6,9 @@ import time
 import shutil
 from urllib.parse import urlparse
 from os.path import basename
+
+from rest_framework_simplejwt.tokens import RefreshToken
+
 from .models import Comment, Download, Rating
 
 from django.contrib.auth import get_user_model
@@ -665,10 +668,17 @@ class ModAPITests(APITestCase):
 
     def setUp(self):
         category_two = Category.objects.create(name="Another Category")
-
         file_content = io.BytesIO(b"file_content" * 1024)
-        self.file = SimpleUploadedFile("file.zip", file_content.read(), content_type="application/zip")
+
         self.user = User.objects.create(username="testuser", email=f"{uuid.uuid4()}@example.com", password=uuid.uuid4())
+        self.client.login(username=self.user.username, password=self.user.password)
+
+        refresh_token = RefreshToken.for_user(self.user)
+        self.token = str(refresh_token.access_token)
+
+        self.client.credentials(HTTP_AUTHORIZATION="Bearer " + self.token)
+
+        self.file = SimpleUploadedFile("file.zip", file_content.read(), content_type="application/zip")
         self.category = Category.objects.create(name="Test Category")
         self.category_two = category_two  # Save the second category
         self.tag = Tag.objects.create(name="Test Tag")
@@ -1068,11 +1078,15 @@ class ModIntegrationTests(APITestCase):
 
     def setUp(self):
         # Create necessary objects
-        self.client.post(
-            reverse("register"),
-            {"username": "testuser", "email": f"{uuid.uuid4()}@example.com", "password": "StrongPass1!"},
-        )
-        self.user = User.objects.get(username="testuser")
+        self.user = User.objects.create_user(username="testuser", email="test@example.com", password="testpassword")
+        self.client.login(username="testuser", password="testpassword")
+
+        # Obtain JWT token
+        refresh = RefreshToken.for_user(self.user)
+        self.token = str(refresh.access_token)
+
+        # Add token to the headers
+        self.client.credentials(HTTP_AUTHORIZATION="Bearer " + self.token)
 
         self.category = Category.objects.create(name="Test Category")
         self.tag = Tag.objects.create(name="Test Tag")
@@ -1088,6 +1102,7 @@ class ModIntegrationTests(APITestCase):
 
     def test_full_mod_lifecycle(self):
         # 1. Create a mod
+        create_url = reverse("create")
         mod_data = {
             "title": "New Mod",
             "short_desc": "New short description",
@@ -1095,48 +1110,42 @@ class ModIntegrationTests(APITestCase):
             "version": "1.0.0",
             "file": self.file,
             "file_size": self.file.size,
-            "user": self.user.id,
-            "approved": True,
             "category": self.category.id,
             "tags": [self.tag.id],
-            "races": [self.race.id],
-            "genders": [self.gender.id],
+            "user": self.user.id,
+            "approved": True,
         }
-
-        self.file.seek(0)  # Reset the file pointer
-
-        response = self.client.post(reverse("create"), mod_data, format="multipart")
+        response = self.client.post(create_url, mod_data, format="multipart")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        mod_uuid = response.data["uuid"]  # Ensure the correct field is used
+        mod_uuid = response.data["uuid"]
 
-        # 2. Fetch the created mod
-        response = self.client.get(reverse("detail", kwargs={"uuid": mod_uuid}))
+        # 2. Retrieve the mod details
+        detail_url = reverse("detail", kwargs={"uuid": mod_uuid})
+        response = self.client.get(detail_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data["title"], mod_data["title"])
+        self.assertEqual(response.data["title"], "New Mod")
 
         # 3. Update the mod
-        update_data = {
+        update_url = reverse("update", kwargs={"uuid": mod_uuid})
+        updated_data = {
             "title": "Updated Mod",
             "short_desc": "Updated short description",
             "description": "Updated long description",
             "version": "1.0.1",
             "file": self.file,
             "file_size": self.file.size,
-            "user": self.user.id,
-            "approved": True,
             "category": self.category.id,
             "tags": [self.tag.id],
-            "races": [self.race.id],
-            "genders": [self.gender.id],
+            "user": self.user.id,
         }
-
         self.file.seek(0)  # Reset the file pointer
-
-        response = self.client.put(reverse("update", kwargs={"uuid": mod_uuid}), update_data, format="multipart")
+        response = self.client.put(update_url, updated_data, format="multipart")
+        print(response.data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data["title"], update_data["title"])
+        self.assertEqual(response.data["title"], "Updated Mod")
 
         # 4. Delete the mod
-        response = self.client.delete(reverse("delete", kwargs={"uuid": mod_uuid}))
+        delete_url = reverse("delete", kwargs={"uuid": mod_uuid})
+        response = self.client.delete(delete_url)
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(Mod.objects.filter(uuid=mod_uuid).exists())
