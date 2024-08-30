@@ -34,7 +34,7 @@ from mods.views import (
     ModSearchByGenderAPIView,
 )
 
-BASE_MODS_URL = "mod"
+BASE_MODS_URL = "m"
 
 urlpatterns = [
     path("admin/", admin.site.urls),
