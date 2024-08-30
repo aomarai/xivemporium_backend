@@ -1,7 +1,10 @@
+from django.contrib.auth import get_user_model
 from rest_framework import serializers
 from django.core.exceptions import ValidationError
 
 from .models import Mod, ModCompatibility, Tag, Race, Gender, Download, Rating, Comment
+
+User = get_user_model()
 
 
 class CommentSerializer(serializers.ModelSerializer):
@@ -82,3 +85,15 @@ class GenderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Gender
         fields = "__all__"
+
+
+class UserRegistrationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ["username", "email", "password"]
+
+    def create(self, validated_data):
+        user = User.objects.create_user(
+            username=validated_data["username"], email=validated_data["email"], password=validated_data["password"]
+        )
+        return user

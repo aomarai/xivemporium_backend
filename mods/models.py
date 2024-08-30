@@ -13,15 +13,15 @@ from django.core.validators import (
 from django.core.exceptions import ValidationError
 
 
-USER_UPLOADED_MODS_PATH = "user_uploads"
+_USER_UPLOADED_MODS_PATH = "user_uploads"
 
 
 def get_image_upload_path(instance, filename):
-    return f"{USER_UPLOADED_MODS_PATH}/{instance.mod.uuid}/images/{filename}"
+    return f"{_USER_UPLOADED_MODS_PATH}/{instance.mod.uuid}/images/{filename}"
 
 
 def get_mod_upload_path(instance, filename):
-    return f"{USER_UPLOADED_MODS_PATH}/{instance.uuid}/files/{filename}"
+    return f"{_USER_UPLOADED_MODS_PATH}/{instance.uuid}/files/{filename}"
 
 
 class User(AbstractUser):

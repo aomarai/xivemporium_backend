@@ -6,7 +6,7 @@ import time
 import shutil
 from urllib.parse import urlparse
 from os.path import basename
-from .models import USER_UPLOADED_MODS_PATH, Comment, Download, Rating
+from .models import Comment, Download, Rating
 
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError, transaction
@@ -18,6 +18,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from .models import Category, Gender, Mod, ModCompatibility, ModImage, Race, Tag
+from .models import _USER_UPLOADED_MODS_PATH
 
 User = get_user_model()
 
@@ -56,7 +57,7 @@ class ModModelTests(TestCase):
         transaction.on_commit(cleanup)
 
         # Delete the uploaded user mods directory if it exists
-        shutil.rmtree(USER_UPLOADED_MODS_PATH, ignore_errors=True)
+        shutil.rmtree(_USER_UPLOADED_MODS_PATH, ignore_errors=True)
 
     def test_unique_email_constraint(self):
         user1 = User.objects.create(username="user1", email=f"{uuid.uuid4()}@example.com", password=uuid.uuid4())
@@ -694,6 +695,8 @@ class ModAPITests(APITestCase):
         Category.objects.all().delete()
         Tag.objects.all().delete
 
+        shutil.rmtree(_USER_UPLOADED_MODS_PATH, ignore_errors=True)
+
     def test_mod_list_api_view_returns_approved_mods(self):
         url = reverse("list")
         response = self.client.get(url)
@@ -897,6 +900,9 @@ class CommentModelTests(TestCase):
             category=self.category,
         )
 
+    def tearDown(self):
+        shutil.rmtree(_USER_UPLOADED_MODS_PATH, ignore_errors=True)
+
     def test_comment_saves_with_valid_data(self):
         comment = Comment(
             user=self.user,
@@ -981,6 +987,9 @@ class DownloadModelTests(TestCase):
             category=self.category,
         )
 
+    def tearDown(self):
+        shutil.rmtree(_USER_UPLOADED_MODS_PATH, ignore_errors=True)
+
     def test_download_saves_with_valid_data(self):
         Download.objects.create(mod=self.mod, user=self.user)
         self.assertEqual(Download.objects.count(), 1)
@@ -1025,6 +1034,9 @@ class RatingModelTests(TestCase):
             category=self.category,
         )
 
+    def tearDown(self):
+        shutil.rmtree(_USER_UPLOADED_MODS_PATH, ignore_errors=True)
+
     def test_rating_is_created_successfully(self):
         rating = Rating.objects.create(mod=self.mod, user=self.user, rating=5)
         self.assertEqual(rating.rating, 5)
@@ -1050,3 +1062,81 @@ class RatingModelTests(TestCase):
     def test_rating_requires_rating(self):
         with self.assertRaises(ValidationError):
             Rating.objects.create(mod=self.mod, user=self.user)
+
+
+class ModIntegrationTests(APITestCase):
+
+    def setUp(self):
+        # Create necessary objects
+        self.client.post(
+            reverse("register"),
+            {"username": "testuser", "email": f"{uuid.uuid4()}@example.com", "password": "StrongPass1!"},
+        )
+        self.user = User.objects.get(username="testuser")
+
+        self.category = Category.objects.create(name="Test Category")
+        self.tag = Tag.objects.create(name="Test Tag")
+        self.race = Race.objects.create(name="Test Race")
+        self.gender = Gender.objects.create(name="Test Gender")
+
+        # File for testing
+        self.file = _get_test_file_content()
+
+    def tearDown(self):
+        # Remove the user_uploads directory after each test
+        shutil.rmtree(_USER_UPLOADED_MODS_PATH, ignore_errors=True)
+
+    def test_full_mod_lifecycle(self):
+        # 1. Create a mod
+        mod_data = {
+            "title": "New Mod",
+            "short_desc": "New short description",
+            "description": "New long description",
+            "version": "1.0.0",
+            "file": self.file,
+            "file_size": self.file.size,
+            "user": self.user.id,
+            "approved": True,
+            "category": self.category.id,
+            "tags": [self.tag.id],
+            "races": [self.race.id],
+            "genders": [self.gender.id],
+        }
+
+        self.file.seek(0)  # Reset the file pointer
+
+        response = self.client.post(reverse("create"), mod_data, format="multipart")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        mod_uuid = response.data["uuid"]  # Ensure the correct field is used
+
+        # 2. Fetch the created mod
+        response = self.client.get(reverse("detail", kwargs={"uuid": mod_uuid}))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["title"], mod_data["title"])
+
+        # 3. Update the mod
+        update_data = {
+            "title": "Updated Mod",
+            "short_desc": "Updated short description",
+            "description": "Updated long description",
+            "version": "1.0.1",
+            "file": self.file,
+            "file_size": self.file.size,
+            "user": self.user.id,
+            "approved": True,
+            "category": self.category.id,
+            "tags": [self.tag.id],
+            "races": [self.race.id],
+            "genders": [self.gender.id],
+        }
+
+        self.file.seek(0)  # Reset the file pointer
+
+        response = self.client.put(reverse("update", kwargs={"uuid": mod_uuid}), update_data, format="multipart")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["title"], update_data["title"])
+
+        # 4. Delete the mod
+        response = self.client.delete(reverse("delete", kwargs={"uuid": mod_uuid}))
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Mod.objects.filter(uuid=mod_uuid).exists())

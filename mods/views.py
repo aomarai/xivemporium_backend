@@ -1,7 +1,9 @@
-from rest_framework import generics
+from rest_framework import generics, status
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from .models import Mod, Race, Gender, Tag
-from .serializers import ModSerializer, RaceSerializer, GenderSerializer, TagSerializer
+from .serializers import ModSerializer, RaceSerializer, GenderSerializer, TagSerializer, UserRegistrationSerializer
 
 
 class ModListAPIView(generics.ListAPIView):
@@ -103,3 +105,12 @@ class RaceListAPIView(generics.ListAPIView):
 class GenderListAPIView(generics.ListAPIView):
     queryset = Gender.objects.all()
     serializer_class = GenderSerializer
+
+
+class UserRegistrationAPIView(APIView):
+    def post(self, request, *args, **kwargs):
+        serializer = UserRegistrationSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
