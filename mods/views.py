@@ -1,6 +1,7 @@
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
 
 from .models import Mod, Race, Gender, Tag
 from .serializers import ModSerializer, RaceSerializer, GenderSerializer, TagSerializer, UserRegistrationSerializer
@@ -21,18 +22,23 @@ class ModDetailAPIView(generics.RetrieveAPIView):
 class ModCreateAPIView(generics.CreateAPIView):
     queryset = Mod.objects.all()
     serializer_class = ModSerializer
+    permission_classes = [IsAuthenticated]
 
 
+# TODO: Ensure only the user who created the mod can update or delete it
 class ModUpdateAPIView(generics.UpdateAPIView):
     queryset = Mod.objects.all()
     serializer_class = ModSerializer
     lookup_field = "uuid"
+    permission_classes = [IsAuthenticated]
 
 
+# TODO: Ensure only the user who created the mod can update or delete it
 class ModDeleteAPIView(generics.DestroyAPIView):
     queryset = Mod.objects.all()
     serializer_class = ModSerializer
     lookup_field = "uuid"
+    permission_classes = [IsAuthenticated]
 
 
 class TagListAPIView(generics.ListAPIView):
