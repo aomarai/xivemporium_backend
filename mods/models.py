@@ -25,10 +25,17 @@ def get_mod_upload_path(instance, filename):
 
 
 class User(AbstractUser):
+    ROLE_CHOICES = [
+        ("user", "User"),
+        ("moderator", "Moderator"),
+        ("admin", "Admin"),
+    ]
+
     username = models.CharField(
         max_length=40, unique=True, db_index=True, validators=[MinLengthValidator(2), MaxLengthValidator(40)]
     )
     email = models.EmailField(unique=True, db_index=True, validators=[EmailValidator()])
+    role = models.CharField(max_length=10, choices=ROLE_CHOICES, default="user", db_index=True)
 
     def save(self, *args, **kwargs):
         self.full_clean()

@@ -1066,7 +1066,6 @@ class RatingModelTests(TestCase):
 
 
 class ModIntegrationTests(APITestCase):
-
     def setUp(self):
         # Create necessary objects
         self.user = User.objects.create_user(username="testuser", email="test@example.com", password="testpassword")
@@ -1137,3 +1136,164 @@ class ModIntegrationTests(APITestCase):
         response = self.client.delete(delete_url)
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(Mod.objects.filter(uuid=mod_uuid).exists())
+
+
+class ModApprovalAPITests(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="moderator", password="password", email=f"{uuid.uuid4()}@example.com"
+        )
+        self.user.role = "moderator"
+        self.user.save()
+        self.client.login(username="moderator", password="password")
+
+        # Obtain JWT token
+        refresh = RefreshToken.for_user(self.user)
+        self.token = str(refresh.access_token)
+
+        # Add token to the headers
+        self.client.credentials(HTTP_AUTHORIZATION="Bearer " + self.token)
+
+        self.mod = Mod.objects.create(
+            title="Test Mod",
+            short_desc="Short description",
+            description="Long description",
+            version="1.0.0",
+            file_size=1000000,
+            user=User.objects.create(username="testuser", password="password", email=f"{uuid.uuid4()}@example.com"),
+            approved=False,
+            file="path/to/file.zip",
+            category=Category.objects.create(name="Test Category"),
+        )
+        self.url = reverse("approve", kwargs={"uuid": self.mod.uuid})
+
+    def test_allows_moderator_to_approve_mod(self):
+        response = self.client.patch(self.url, {"approved": True}, format="json")
+        self.mod.refresh_from_db()
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(self.mod.approved)
+
+    def test_allows_moderator_to_disapprove_mod(self):
+        self.mod.approved = True
+        self.mod.save()
+        response = self.client.patch(self.url, {"approved": False}, format="json")
+        self.mod.refresh_from_db()
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(self.mod.approved)
+
+    def test_returns_404_if_mod_not_found(self):
+        url = reverse("approve", kwargs={"uuid": "00000000-0000-0000-0000-000000000000"})
+        response = self.client.patch(url, {"approved": True}, format="json")
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_returns_400_if_approved_field_missing(self):
+        response = self.client.patch(self.url, {}, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_prevents_non_moderator_from_approving_mod(self):
+        self.client.logout()
+        non_moderator = User.objects.create_user(
+            username="user", password="password", email=f"{uuid.uuid4()}@example.com"
+        )
+        self.client.login(username="user", password="password")
+
+        # Obtain JWT token for non-moderator
+        refresh = RefreshToken.for_user(non_moderator)
+        self.token = str(refresh.access_token)
+
+        # Add token to the headers
+        self.client.credentials(HTTP_AUTHORIZATION="Bearer " + self.token)
+
+        response = self.client.patch(self.url, {"approved": True}, format="json")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+
+class ModPermissionAPITests(APITestCase):
+    def setUp(self):
+        # Create users with different roles
+        self.uploader = User.objects.create_user(
+            username="uploader", password="password", email=f"{uuid.uuid4()}@example.com"
+        )
+        self.moderator = User.objects.create_user(
+            username="moderator", password="password", role="moderator", email=f"{uuid.uuid4()}@example.com"
+        )
+        self.admin = User.objects.create_user(
+            username="admin", password="password", role="admin", email=f"{uuid.uuid4()}@example.com"
+        )
+        self.other_user = User.objects.create_user(
+            username="other_user", password="password", email=f"{uuid.uuid4()}@example.com"
+        )
+
+        # Create a category
+        self.category = Category.objects.create(name="Test Category")
+
+        # Create a mod associated with the uploader
+        self.mod = Mod.objects.create(
+            title="Test Mod",
+            description="Test Description",
+            user=self.uploader,
+            category=self.category,
+            file=_get_test_file_content(),
+            file_size=1000000,
+            short_desc="Short Description",
+            approved=True,
+        )
+
+        # Define URLs for updating and deleting the mod
+        self.update_url = reverse("update", kwargs={"uuid": self.mod.uuid})
+        self.delete_url = reverse("delete", kwargs={"uuid": self.mod.uuid})
+
+        # Obtain JWT tokens for each user
+        self.uploader_token = str(RefreshToken.for_user(self.uploader).access_token)
+        self.moderator_token = str(RefreshToken.for_user(self.moderator).access_token)
+        self.admin_token = str(RefreshToken.for_user(self.admin).access_token)
+        self.other_user_token = str(RefreshToken.for_user(self.other_user).access_token)
+
+    def test_uploader_can_update_mod(self):
+        self.client.credentials(HTTP_AUTHORIZATION="Bearer " + self.uploader_token)
+        response = self.client.patch(self.update_url, {"title": "Updated Title"}, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.mod.refresh_from_db()
+        self.assertEqual(self.mod.title, "Updated Title")
+
+    def test_uploader_can_delete_mod(self):
+        self.client.credentials(HTTP_AUTHORIZATION="Bearer " + self.uploader_token)
+        response = self.client.delete(self.delete_url)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Mod.objects.filter(uuid=self.mod.uuid).exists())
+
+    def test_moderator_can_update_mod(self):
+        self.client.credentials(HTTP_AUTHORIZATION="Bearer " + self.moderator_token)
+        response = self.client.patch(self.update_url, {"title": "Updated Title"}, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.mod.refresh_from_db()
+        self.assertEqual(self.mod.title, "Updated Title")
+
+    def test_moderator_can_delete_mod(self):
+        self.client.credentials(HTTP_AUTHORIZATION="Bearer " + self.moderator_token)
+        response = self.client.delete(self.delete_url)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Mod.objects.filter(uuid=self.mod.uuid).exists())
+
+    def test_admin_can_update_mod(self):
+        self.client.credentials(HTTP_AUTHORIZATION="Bearer " + self.admin_token)
+        response = self.client.patch(self.update_url, {"title": "Updated Title"}, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.mod.refresh_from_db()
+        self.assertEqual(self.mod.title, "Updated Title")
+
+    def test_admin_can_delete_mod(self):
+        self.client.credentials(HTTP_AUTHORIZATION="Bearer " + self.admin_token)
+        response = self.client.delete(self.delete_url)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Mod.objects.filter(uuid=self.mod.uuid).exists())
+
+    def test_other_user_cannot_update_mod(self):
+        self.client.credentials(HTTP_AUTHORIZATION="Bearer " + self.other_user_token)
+        response = self.client.patch(self.update_url, {"title": "Updated Title"}, format="json")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_other_user_cannot_delete_mod(self):
+        self.client.credentials(HTTP_AUTHORIZATION="Bearer " + self.other_user_token)
+        response = self.client.delete(self.delete_url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)

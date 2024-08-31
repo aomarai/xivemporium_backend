@@ -1,10 +1,12 @@
-from rest_framework import generics, status
+from rest_framework import generics, status, serializers
+from rest_framework.generics import UpdateAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 
 from .models import Mod, Race, Gender, Tag
 from .serializers import ModSerializer, RaceSerializer, GenderSerializer, TagSerializer, UserRegistrationSerializer
+from .permissions import IsModeratorOrAdmin, IsModeratorOrAdminOrOwner
 
 
 class ModListAPIView(generics.ListAPIView):
@@ -25,12 +27,11 @@ class ModCreateAPIView(generics.CreateAPIView):
     permission_classes = [IsAuthenticated]
 
 
-# TODO: Ensure only the user who created the mod can update or delete it
 class ModUpdateAPIView(generics.UpdateAPIView):
     queryset = Mod.objects.all()
     serializer_class = ModSerializer
     lookup_field = "uuid"
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsModeratorOrAdminOrOwner]
 
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop("partial", True)  # Allow partial updates
@@ -49,12 +50,11 @@ class ModUpdateAPIView(generics.UpdateAPIView):
         return Response(serializer.data)
 
 
-# TODO: Ensure only the user who created the mod can update or delete it
 class ModDeleteAPIView(generics.DestroyAPIView):
     queryset = Mod.objects.all()
     serializer_class = ModSerializer
     lookup_field = "uuid"
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsModeratorOrAdminOrOwner]
 
 
 class TagListAPIView(generics.ListAPIView):
@@ -136,3 +136,24 @@ class UserRegistrationAPIView(APIView):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ModApprovalAPIView(UpdateAPIView):
+    queryset = Mod.objects.all()
+    serializer_class = ModSerializer
+    permission_classes = [IsModeratorOrAdmin]
+    lookup_field = "uuid"
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop("partial", False)
+        instance = self.get_object()
+        data = request.data.copy()
+
+        if "approved" not in data:
+            raise serializers.ValidationError({"approved": "This field is required."})
+
+        serializer = self.get_serializer(instance, data=data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+
+        return Response(serializer.data)
