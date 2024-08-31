@@ -27,7 +27,6 @@ class ModCreateAPIView(generics.CreateAPIView):
     permission_classes = [IsAuthenticated]
 
 
-# TODO: Ensure only the user who created the mod can update or delete it
 class ModUpdateAPIView(generics.UpdateAPIView):
     queryset = Mod.objects.all()
     serializer_class = ModSerializer
@@ -51,7 +50,6 @@ class ModUpdateAPIView(generics.UpdateAPIView):
         return Response(serializer.data)
 
 
-# TODO: Ensure only the user who created the mod can update or delete it
 class ModDeleteAPIView(generics.DestroyAPIView):
     queryset = Mod.objects.all()
     serializer_class = ModSerializer
