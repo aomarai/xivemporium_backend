@@ -17,6 +17,7 @@ Including another URLconf
 
 from django.contrib import admin
 from django.urls import path
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from mods.views import (
     ModListAPIView,
     ModDetailAPIView,
@@ -56,4 +57,6 @@ urlpatterns = [
     path("races/", RaceListAPIView.as_view(), name="race-list"),
     path("genders/", GenderListAPIView.as_view(), name="gender-list"),
     path("register/", UserRegistrationAPIView.as_view(), name="register"),
+    path("api/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
+    path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
 ]
