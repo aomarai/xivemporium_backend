@@ -5,6 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 
 from .models import Mod, Race, Gender, Tag
 from .serializers import ModSerializer, RaceSerializer, GenderSerializer, TagSerializer, UserRegistrationSerializer
+from .permissions import IsModeratorOrAdmin
 
 
 class ModListAPIView(generics.ListAPIView):
@@ -136,3 +137,17 @@ class UserRegistrationAPIView(APIView):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ModApprovalAPIView(generics.UpdateAPIView):
+    queryset = Mod.objects.all()
+    serializer_class = ModSerializer
+    permission_classes = [IsModeratorOrAdmin]
+    lookup_field = "uuid"
+
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        instance.approved = request.data.get("approved")
+        instance.save()
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
