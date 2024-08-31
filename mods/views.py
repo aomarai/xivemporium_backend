@@ -1,4 +1,5 @@
-from rest_framework import generics, status
+from rest_framework import generics, status, serializers
+from rest_framework.generics import UpdateAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
@@ -139,15 +140,22 @@ class UserRegistrationAPIView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-class ModApprovalAPIView(generics.UpdateAPIView):
+class ModApprovalAPIView(UpdateAPIView):
     queryset = Mod.objects.all()
     serializer_class = ModSerializer
     permission_classes = [IsModeratorOrAdmin]
     lookup_field = "uuid"
 
     def update(self, request, *args, **kwargs):
+        partial = kwargs.pop("partial", False)
         instance = self.get_object()
-        instance.approved = request.data.get("approved")
-        instance.save()
-        serializer = self.get_serializer(instance)
+        data = request.data.copy()
+
+        if "approved" not in data:
+            raise serializers.ValidationError({"approved": "This field is required."})
+
+        serializer = self.get_serializer(instance, data=data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+
         return Response(serializer.data)

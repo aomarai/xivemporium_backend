@@ -1066,7 +1066,6 @@ class RatingModelTests(TestCase):
 
 
 class ModIntegrationTests(APITestCase):
-
     def setUp(self):
         # Create necessary objects
         self.user = User.objects.create_user(username="testuser", email="test@example.com", password="testpassword")
@@ -1137,3 +1136,73 @@ class ModIntegrationTests(APITestCase):
         response = self.client.delete(delete_url)
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(Mod.objects.filter(uuid=mod_uuid).exists())
+
+
+class ModApprovalAPITests(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="moderator", password="password", email=f"{uuid.uuid4()}@example.com"
+        )
+        self.user.role = "moderator"
+        self.user.save()
+        self.client.login(username="moderator", password="password")
+
+        # Obtain JWT token
+        refresh = RefreshToken.for_user(self.user)
+        self.token = str(refresh.access_token)
+
+        # Add token to the headers
+        self.client.credentials(HTTP_AUTHORIZATION="Bearer " + self.token)
+
+        self.mod = Mod.objects.create(
+            title="Test Mod",
+            short_desc="Short description",
+            description="Long description",
+            version="1.0.0",
+            file_size=1000000,
+            user=User.objects.create(username="testuser", password="password", email=f"{uuid.uuid4()}@example.com"),
+            approved=False,
+            file="path/to/file.zip",
+            category=Category.objects.create(name="Test Category"),
+        )
+        self.url = reverse("approve", kwargs={"uuid": self.mod.uuid})
+
+    def test_allows_moderator_to_approve_mod(self):
+        response = self.client.patch(self.url, {"approved": True}, format="json")
+        self.mod.refresh_from_db()
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(self.mod.approved)
+
+    def test_allows_moderator_to_disapprove_mod(self):
+        self.mod.approved = True
+        self.mod.save()
+        response = self.client.patch(self.url, {"approved": False}, format="json")
+        self.mod.refresh_from_db()
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(self.mod.approved)
+
+    def test_returns_404_if_mod_not_found(self):
+        url = reverse("approve", kwargs={"uuid": "00000000-0000-0000-0000-000000000000"})
+        response = self.client.patch(url, {"approved": True}, format="json")
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_returns_400_if_approved_field_missing(self):
+        response = self.client.patch(self.url, {}, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_prevents_non_moderator_from_approving_mod(self):
+        self.client.logout()
+        non_moderator = User.objects.create_user(
+            username="user", password="password", email=f"{uuid.uuid4()}@example.com"
+        )
+        self.client.login(username="user", password="password")
+
+        # Obtain JWT token for non-moderator
+        refresh = RefreshToken.for_user(non_moderator)
+        self.token = str(refresh.access_token)
+
+        # Add token to the headers
+        self.client.credentials(HTTP_AUTHORIZATION="Bearer " + self.token)
+
+        response = self.client.patch(self.url, {"approved": True}, format="json")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
