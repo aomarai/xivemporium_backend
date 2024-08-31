@@ -6,7 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 
 from .models import Mod, Race, Gender, Tag
 from .serializers import ModSerializer, RaceSerializer, GenderSerializer, TagSerializer, UserRegistrationSerializer
-from .permissions import IsModeratorOrAdmin
+from .permissions import IsModeratorOrAdmin, IsModeratorOrAdminOrOwner
 
 
 class ModListAPIView(generics.ListAPIView):
@@ -32,7 +32,7 @@ class ModUpdateAPIView(generics.UpdateAPIView):
     queryset = Mod.objects.all()
     serializer_class = ModSerializer
     lookup_field = "uuid"
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsModeratorOrAdminOrOwner]
 
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop("partial", True)  # Allow partial updates
@@ -56,7 +56,7 @@ class ModDeleteAPIView(generics.DestroyAPIView):
     queryset = Mod.objects.all()
     serializer_class = ModSerializer
     lookup_field = "uuid"
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsModeratorOrAdminOrOwner]
 
 
 class TagListAPIView(generics.ListAPIView):
