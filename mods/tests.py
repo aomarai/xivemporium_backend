@@ -7,6 +7,7 @@ import shutil
 from urllib.parse import urlparse
 from os.path import basename
 
+from django.core import mail
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from .models import Comment, Download, Rating
@@ -1297,3 +1298,35 @@ class ModPermissionAPITests(APITestCase):
         self.client.credentials(HTTP_AUTHORIZATION="Bearer " + self.other_user_token)
         response = self.client.delete(self.delete_url)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+
+class PasswordResetTests(TestCase):
+
+    def setUp(self):
+        self.user = User.objects.create_user(username="testuser", email="test@example.com", password="password123")
+
+    def test_password_reset_view(self):
+        response = self.client.get(reverse("password_reset"))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "registration/password_reset_form.html")
+
+    def test_password_reset_done_view(self):
+        response = self.client.get(reverse("password_reset_done"))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "registration/password_reset_done.html")
+
+    def test_password_reset_confirm_view(self):
+        response = self.client.get(reverse("password_reset_confirm", kwargs={"uidb64": "uid", "token": "token"}))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "registration/password_reset_confirm.html")
+
+    def test_password_reset_complete_view(self):
+        response = self.client.get(reverse("password_reset_complete"))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "registration/password_reset_complete.html")
+
+    def test_password_reset_email(self):
+        response = self.client.post(reverse("password_reset"), {"email": self.user.email})
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("test@example.com", mail.outbox[0].to)
